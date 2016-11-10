@@ -32,15 +32,15 @@
 ############################################################################
 px4_add_module(
 	MODULE examples__markdw1000driver
-	MAIN markdw1000driver
+	MAIN mtest
 	STACK_MAIN 2000
 	SRCS
-		markdw1000driver.c
+		markdw1000driver.cpp
 		DW1000.cpp
 		DW1000Device.cpp
+		DW1000Time.cpp
 		#DW1000Mac.cpp
 		#DW1000Ranging.cpp
-		#DW1000Time.cpp
 	DEPENDS
 		platforms__common
 	)

@@ -50,10 +50,18 @@
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/vehicle_attitude.h>
 
-__EXPORT int markdw1000driver_main(int argc, char *argv[]);
 
-int markdw1000driver_main(int argc, char *argv[])
+#include "DW1000.h"
+
+extern "C" __EXPORT int mtest_main(int argc, char *argv[]);
+
+//__EXPORT int markdw1000driver_main(int argc, char *argv[]);
+
+int mtest_main(int argc, char *argv[])
 {
-    PX4_INFO("Hello Sky!");
+    printf("Starting app\n");
+    printf("Creating object\n");
+//    DW1000Class dw1000 = DW1000Class(0, (spi_dev_e) 0);//mwm todo: arguments??h
+    DW1000.begin();
     return OK;
 }

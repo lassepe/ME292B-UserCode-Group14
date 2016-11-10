@@ -134,6 +134,8 @@ set(config_module_list
 
 	# Hardware test
 	#examples/hwtest
+
+	examples/markdw1000driver
 )
 
 set(config_extra_builtin_cmds

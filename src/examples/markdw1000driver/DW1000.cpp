@@ -109,11 +109,11 @@ const uint8_t DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24
  * ######################################################################### */
 
 void DW1000Class::end() {//?
-	//mwm TODO SPI.end();
+	SPI.end();
 }
 
 
-void DW1000Class::select(uint8_t ss) {//CF: dwConfigure
+void DW1000Class::select(uint32_t ss) {//CF: dwConfigure
 	// mwm CF has no ss? reselect(ss);//mwm missing on CF
 	// try locking clock at PLL speed (should be done already,
 	// but just to be sure)
@@ -158,7 +158,7 @@ void DW1000Class::select(uint8_t ss) {//CF: dwConfigure
 }
 
 /* // mwm CF has no ss?
-void DW1000Class::reselect(uint8_t ss) {
+void DW1000Class::reselect(uint32_t ss) {
 	_ss = ss;
 	pinMode(_ss, OUTPUT);
 	digitalWrite(_ss, HIGH);
@@ -174,11 +174,9 @@ void DW1000Class::begin(uint32_t irq, uint32_t rst) {
 	SPI.usingInterrupt(digitalPinToInterrupt(irq)); // not every board support this, e.g. ESP8266
 #endif
 	// pin and basic member setup
-	//mwm TODO: We should use these inputs, they should be the GPIO ports...
 	_rst        = rst;
 	_irq        = irq;
 	_deviceMode = IDLE_MODE;
-
 	// attach interrupt
 	//attachInterrupt(_irq, DW1000Class::handleInterrupt, CHANGE); // todo interrupt for ESP8266
 	// TODO throw error if pin is not a interrupt pin
@@ -1570,7 +1568,6 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
 			headerLen += 2;
 		}
 	}
-	_spi.
 	SPI.beginTransaction(*_currentSPI);
 	digitalWrite(_ss, LOW);
 	for(i = 0; i < headerLen; i++) {

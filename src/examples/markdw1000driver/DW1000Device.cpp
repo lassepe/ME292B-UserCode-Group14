@@ -135,6 +135,7 @@ void DW1000Device::randomShortAddress() {
 }
 
 void DW1000Device::noteActivity() {
+	//mwm todo: nicer time
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     _activity = (ts.tv_sec * 1000 + ts.tv_nsec/1000000);
@@ -142,9 +143,13 @@ void DW1000Device::noteActivity() {
 
 
 bool DW1000Device::isInactive() {
+	//mwm todo: nicer time
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+	int32_t currMillis = (ts.tv_sec * 1000 + ts.tv_nsec/1000000);
 	//One second of inactivity
-	if(millis()-_activity > INACTIVITY_TIME) {
-		_activity = millis();
+	if(currMillis -_activity > INACTIVITY_TIME) {
+		_activity = currMillis;
 		return true;
 	}
 	return false;

@@ -28,6 +28,6 @@
  * Some examples or debug code use this
  * Set false if you do not need it and have to save some space
  */
-#define DW1000TIME_H_PRINTABLE true
+//#define DW1000TIME_H_PRINTABLE true
 
 #endif // DW1000COMPILEOPTIONS_H

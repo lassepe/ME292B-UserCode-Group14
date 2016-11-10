@@ -18,6 +18,7 @@
  * Arduino driver library (source file) for the Decawave DW1000 UWB transceiver IC.
  */
 
+#include <px4_config.h>
 #include "DW1000.h"
 
 DW1000Class DW1000;
@@ -26,9 +27,10 @@ DW1000Class DW1000;
  * #### Static member variables ##############################################
  * ######################################################################### */
 // pins
-uint8_t DW1000Class::_ss;
-uint8_t DW1000Class::_rst;
-uint8_t DW1000Class::_irq;
+uint32_t DW1000Class::_ss;
+uint32_t DW1000Class::_rst;//reset: GPIO_EXPANSION_LPSDECK_RESET
+uint32_t DW1000Class::_irq;
+
 
 
 // IRQ callbacks
@@ -40,85 +42,92 @@ void (* DW1000Class::_handleReceiveTimeout)(void)            = 0;
 void (* DW1000Class::_handleReceiveTimestampAvailable)(void) = 0;
 
 // registers
-byte       DW1000Class::_syscfg[LEN_SYS_CFG];
-byte       DW1000Class::_sysctrl[LEN_SYS_CTRL];
-byte       DW1000Class::_sysstatus[LEN_SYS_STATUS];
-byte       DW1000Class::_txfctrl[LEN_TX_FCTRL];
-byte       DW1000Class::_sysmask[LEN_SYS_MASK];
-byte       DW1000Class::_chanctrl[LEN_CHAN_CTRL];
-byte       DW1000Class::_networkAndAddress[LEN_PANADR];
+uint8_t       DW1000Class::_syscfg[LEN_SYS_CFG];
+uint8_t       DW1000Class::_sysctrl[LEN_SYS_CTRL];
+uint8_t       DW1000Class::_sysstatus[LEN_SYS_STATUS];
+uint8_t       DW1000Class::_txfctrl[LEN_TX_FCTRL];
+uint8_t       DW1000Class::_sysmask[LEN_SYS_MASK];
+uint8_t       DW1000Class::_chanctrl[LEN_CHAN_CTRL];
+uint8_t       DW1000Class::_networkAndAddress[LEN_PANADR];
 
 // monitoring
-byte DW1000Class::_vmeas3v3 = 0;
-byte DW1000Class::_tmeas23C = 0;
+uint8_t DW1000Class::_vmeas3v3 = 0;
+uint8_t DW1000Class::_tmeas23C = 0;
 
 // driver internal state
-byte       DW1000Class::_extendedFrameLength = FRAME_LENGTH_NORMAL;
-byte       DW1000Class::_pacSize             = PAC_SIZE_8;
-byte       DW1000Class::_pulseFrequency      = TX_PULSE_FREQ_16MHZ;
-byte       DW1000Class::_dataRate            = TRX_RATE_6800KBPS;
-byte       DW1000Class::_preambleLength      = TX_PREAMBLE_LEN_128;
-byte       DW1000Class::_preambleCode        = PREAMBLE_CODE_16MHZ_4;
-byte       DW1000Class::_channel             = CHANNEL_5;
+uint8_t       DW1000Class::_extendedFrameLength = FRAME_LENGTH_NORMAL;
+uint8_t       DW1000Class::_pacSize             = PAC_SIZE_8;
+uint8_t       DW1000Class::_pulseFrequency      = TX_PULSE_FREQ_16MHZ;
+uint8_t       DW1000Class::_dataRate            = TRX_RATE_6800KBPS;
+uint8_t       DW1000Class::_preambleLength      = TX_PREAMBLE_LEN_128;
+uint8_t       DW1000Class::_preambleCode        = PREAMBLE_CODE_16MHZ_4;
+uint8_t       DW1000Class::_channel             = CHANNEL_5;
 DW1000Time DW1000Class::_antennaDelay;
-boolean    DW1000Class::_smartPower          = false;
+bool    DW1000Class::_smartPower          = false;
 
-boolean    DW1000Class::_frameCheck          = true;
-boolean    DW1000Class::_permanentReceive    = false;
+bool    DW1000Class::_frameCheck          = true;
+bool    DW1000Class::_permanentReceive    = false;
 uint8_t    DW1000Class::_deviceMode          = IDLE_MODE; // TODO replace by enum
 
 // modes of operation
 // TODO use enum external, not config array
 // this declaration is needed to make variables accessible while runtime from external code
-constexpr byte DW1000Class::MODE_LONGDATA_RANGE_LOWPOWER[];
-constexpr byte DW1000Class::MODE_SHORTDATA_FAST_LOWPOWER[];
-constexpr byte DW1000Class::MODE_LONGDATA_FAST_LOWPOWER[];
-constexpr byte DW1000Class::MODE_SHORTDATA_FAST_ACCURACY[];
-constexpr byte DW1000Class::MODE_LONGDATA_FAST_ACCURACY[];
-constexpr byte DW1000Class::MODE_LONGDATA_RANGE_ACCURACY[];
+constexpr uint8_t DW1000Class::MODE_LONGDATA_RANGE_LOWPOWER[];
+constexpr uint8_t DW1000Class::MODE_SHORTDATA_FAST_LOWPOWER[];
+constexpr uint8_t DW1000Class::MODE_LONGDATA_FAST_LOWPOWER[];
+constexpr uint8_t DW1000Class::MODE_SHORTDATA_FAST_ACCURACY[];
+constexpr uint8_t DW1000Class::MODE_LONGDATA_FAST_ACCURACY[];
+constexpr uint8_t DW1000Class::MODE_LONGDATA_RANGE_ACCURACY[];
 /*
-const byte DW1000Class::MODE_LONGDATA_RANGE_LOWPOWER[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_2048};
-const byte DW1000Class::MODE_SHORTDATA_FAST_LOWPOWER[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_128};
-const byte DW1000Class::MODE_LONGDATA_FAST_LOWPOWER[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_1024};
-const byte DW1000Class::MODE_SHORTDATA_FAST_ACCURACY[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_128};
-const byte DW1000Class::MODE_LONGDATA_FAST_ACCURACY[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_1024};
-const byte DW1000Class::MODE_LONGDATA_RANGE_ACCURACY[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_2048};
+const uint8_t DW1000Class::MODE_LONGDATA_RANGE_LOWPOWER[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_2048};
+const uint8_t DW1000Class::MODE_SHORTDATA_FAST_LOWPOWER[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_128};
+const uint8_t DW1000Class::MODE_LONGDATA_FAST_LOWPOWER[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_1024};
+const uint8_t DW1000Class::MODE_SHORTDATA_FAST_ACCURACY[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_128};
+const uint8_t DW1000Class::MODE_LONGDATA_FAST_ACCURACY[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_1024};
+const uint8_t DW1000Class::MODE_LONGDATA_RANGE_ACCURACY[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_2048};
 */
 // range bias tables (500 MHz in [mm] and 900 MHz in [2mm] - to fit into bytes)
-constexpr byte DW1000Class::BIAS_500_16[];
-constexpr byte DW1000Class::BIAS_500_64[];
-constexpr byte DW1000Class::BIAS_900_16[];
-constexpr byte DW1000Class::BIAS_900_64[];
+constexpr uint8_t DW1000Class::BIAS_500_16[];
+constexpr uint8_t DW1000Class::BIAS_500_64[];
+constexpr uint8_t DW1000Class::BIAS_900_16[];
+constexpr uint8_t DW1000Class::BIAS_900_64[];
 /*
-const byte DW1000Class::BIAS_500_16[] = {198, 187, 179, 163, 143, 127, 109, 84, 59, 31, 0, 36, 65, 84, 97, 106, 110, 112};
-const byte DW1000Class::BIAS_500_64[] = {110, 105, 100, 93, 82, 69, 51, 27, 0, 21, 35, 42, 49, 62, 71, 76, 81, 86};
-const byte DW1000Class::BIAS_900_16[] = {137, 122, 105, 88, 69, 47, 25, 0, 21, 48, 79, 105, 127, 147, 160, 169, 178, 197};
-const byte DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24, 45, 63, 76, 87, 98, 116, 122, 132, 142};
+const uint8_t DW1000Class::BIAS_500_16[] = {198, 187, 179, 163, 143, 127, 109, 84, 59, 31, 0, 36, 65, 84, 97, 106, 110, 112};
+const uint8_t DW1000Class::BIAS_500_64[] = {110, 105, 100, 93, 82, 69, 51, 27, 0, 21, 35, 42, 49, 62, 71, 76, 81, 86};
+const uint8_t DW1000Class::BIAS_900_16[] = {137, 122, 105, 88, 69, 47, 25, 0, 21, 48, 79, 105, 127, 147, 160, 169, 178, 197};
+const uint8_t DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24, 45, 63, 76, 87, 98, 116, 122, 132, 142};
 */
 // SPI settings
-const SPISettings DW1000Class::_fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
-const SPISettings DW1000Class::_slowSPI = SPISettings(2000000L, MSBFIRST, SPI_MODE0);
-const SPISettings* DW1000Class::_currentSPI = &_fastSPI;
+//const SPISettings DW1000Class::_fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
+//const SPISettings DW1000Class::_slowSPI = SPISettings(2000000L, MSBFIRST, SPI_MODE0);
+//const SPISettings* DW1000Class::_currentSPI = &_fastSPI;
+#define FAST_SPI_FREQ (16000000L)
+#define SLOW_SPI_FREQ (2000000L)
 
 /* ###########################################################################
  * #### Init and end #######################################################
  * ######################################################################### */
 
-void DW1000Class::end() {
-	SPI.end();
+void DW1000Class::end() {//?
+	//mwm TODO SPI.end();
 }
 
-void DW1000Class::select(uint8_t ss) {
-	reselect(ss);
+
+void DW1000Class::select(uint8_t ss) {//CF: dwConfigure
+	// mwm CF has no ss? reselect(ss);//mwm missing on CF
 	// try locking clock at PLL speed (should be done already,
 	// but just to be sure)
 	enableClock(AUTO_CLOCK);
-	delay(5);
+	usleep(5000);// delay(5);
 	// reset chip (either soft or hard)
-	if(_rst != 0xff) {
+
+	/* MWM:
+	//Not clear what this is for?
+	if( !(px4_arch_gpioread(_rst)) ) {
 		// dw1000 data sheet v2.08 §5.6.1 page 20, the RSTn pin should not be driven high but left floating.
 		pinMode(_rst, INPUT);
 	}
+	*/
 	reset();
 	// default network and node id
 	writeValueToBytes(_networkAndAddress, 0xFF, LEN_PANADR);
@@ -133,39 +142,43 @@ void DW1000Class::select(uint8_t ss) {
 	writeSystemEventMaskRegister();
 	// load LDE micro-code
 	enableClock(XTI_CLOCK);
-	delay(5);
+	usleep(5000);// delay(5);
 	manageLDE();
-	delay(5);
+	usleep(5000);// delay(5);
 	enableClock(AUTO_CLOCK);
-	delay(5);
+	usleep(5000);// delay(5);
 	
 	// read the temp and vbat readings from OTP that were recorded during production test
 	// see 6.3.1 OTP memory map
-	byte buf_otp[4];
+	uint8_t buf_otp[4];
 	readBytesOTP(0x008, buf_otp); // the stored 3.3 V reading
 	_vmeas3v3 = buf_otp[0];
 	readBytesOTP(0x009, buf_otp); // the stored 23C reading
 	_tmeas23C = buf_otp[0];
 }
 
+/* // mwm CF has no ss?
 void DW1000Class::reselect(uint8_t ss) {
 	_ss = ss;
 	pinMode(_ss, OUTPUT);
 	digitalWrite(_ss, HIGH);
 }
+*/
 
-void DW1000Class::begin(uint8_t irq, uint8_t rst) {
+void DW1000Class::begin(uint32_t irq, uint32_t rst) {
 	// generous initial init/wake-up-idle delay
-	delay(5);
+	usleep(5000);// delay(5);
 	// start SPI
 	SPI.begin();
 #ifndef ESP8266
 	SPI.usingInterrupt(digitalPinToInterrupt(irq)); // not every board support this, e.g. ESP8266
 #endif
 	// pin and basic member setup
+	//mwm TODO: We should use these inputs, they should be the GPIO ports...
 	_rst        = rst;
 	_irq        = irq;
 	_deviceMode = IDLE_MODE;
+
 	// attach interrupt
 	//attachInterrupt(_irq, DW1000Class::handleInterrupt, CHANGE); // todo interrupt for ESP8266
 	// TODO throw error if pin is not a interrupt pin
@@ -174,15 +187,15 @@ void DW1000Class::begin(uint8_t irq, uint8_t rst) {
 
 void DW1000Class::manageLDE() {
 	// transfer any ldo tune values
-	byte ldoTune[LEN_OTP_RDAT];
+	uint8_t ldoTune[LEN_OTP_RDAT];
 	readBytesOTP(0x04, ldoTune); // TODO #define
 	if(ldoTune[0] != 0) {
 		// TODO tuning available, copy over to RAM: use OTP_LDO bit
 	}
 	// tell the chip to load the LDE microcode
 	// TODO remove clock-related code (PMSC_CTRL) as handled separately
-	byte pmscctrl0[LEN_PMSC_CTRL0];
-	byte otpctrl[LEN_OTP_CTRL];
+	uint8_t pmscctrl0[LEN_PMSC_CTRL0];
+	uint8_t otpctrl[LEN_OTP_CTRL];
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
 	memset(otpctrl, 0, LEN_OTP_CTRL);
 	readBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
@@ -193,26 +206,29 @@ void DW1000Class::manageLDE() {
 	otpctrl[1]   = 0x80;
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 	writeBytes(OTP_IF, OTP_CTRL_SUB, otpctrl, LEN_OTP_CTRL);
-	delay(5);
+	usleep(5000);// delay(5);
 	pmscctrl0[0] = 0x00;
 	pmscctrl0[1] = 0x02;
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 }
 
-void DW1000Class::enableClock(byte clock) {
-	byte pmscctrl0[LEN_PMSC_CTRL0];
+void DW1000Class::enableClock(uint8_t clock) {
+	uint8_t pmscctrl0[LEN_PMSC_CTRL0];
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
 	readBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 	if(clock == AUTO_CLOCK) {
-		_currentSPI = &_fastSPI;
+		_spi.set_frequency(FAST_SPI_FREQ);
+		//_currentSPI = &_fastSPI;
 		pmscctrl0[0] = AUTO_CLOCK;
 		pmscctrl0[1] &= 0xFE;
 	} else if(clock == XTI_CLOCK) {
-		_currentSPI = &_slowSPI;
+		_spi.set_frequency(SLOW_SPI_FREQ);
+		//_currentSPI = &_slowSPI;
 		pmscctrl0[0] &= 0xFC;
 		pmscctrl0[0] |= XTI_CLOCK;
 	} else if(clock == PLL_CLOCK) {
-		_currentSPI = &_fastSPI;
+		_spi.set_frequency(FAST_SPI_FREQ);
+//		_currentSPI = &_fastSPI;
 		pmscctrl0[0] &= 0xFC;
 		pmscctrl0[0] |= PLL_CLOCK;
 	} else {
@@ -223,28 +239,28 @@ void DW1000Class::enableClock(byte clock) {
 }
 
 void DW1000Class::reset() {
-	if(_rst == 0xff) {
+	if(px4_arch_gpioread(_rst)) {
 		softReset();
 	} else {
 		// dw1000 data sheet v2.08 §5.6.1 page 20, the RSTn pin should not be driven high but left floating.
 		pinMode(_rst, OUTPUT);
 		digitalWrite(_rst, LOW);
-		delay(2);  // dw1000 data sheet v2.08 §5.6.1 page 20: nominal 50ns, to be safe take more time
+		usleep(2000);// delay(2);  // dw1000 data sheet v2.08 §5.6.1 page 20: nominal 50ns, to be safe take more time
 		pinMode(_rst, INPUT);
-		delay(10); // dwm1000 data sheet v1.2 page 5: nominal 3 ms, to be safe take more time
+		usleep(10000);// delay(10); // dwm1000 data sheet v1.2 page 5: nominal 3 ms, to be safe take more time
 		// force into idle mode (although it should be already after reset)
 		idle();
 	}
 }
 
 void DW1000Class::softReset() {
-	byte pmscctrl0[LEN_PMSC_CTRL0];
+	uint8_t pmscctrl0[LEN_PMSC_CTRL0];
 	readBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 	pmscctrl0[0] = 0x01;
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 	pmscctrl0[3] = 0x00;
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
-	delay(10);
+	usleep(10000);//delay(10);
 	pmscctrl0[0] = 0x00;
 	pmscctrl0[3] = 0xF0;
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
@@ -252,7 +268,7 @@ void DW1000Class::softReset() {
 	idle();
 }
 
-void DW1000Class::enableMode(const byte mode[]) {
+void DW1000Class::enableMode(const uint8_t mode[]) {
 	setDataRate(mode[0]);
 	setPulseFrequency(mode[1]);
 	setPreambleLength(mode[2]);
@@ -268,24 +284,24 @@ void DW1000Class::enableMode(const byte mode[]) {
 
 void DW1000Class::tune() {
 	// these registers are going to be tuned/configured
-	byte agctune1[LEN_AGC_TUNE1];
-	byte agctune2[LEN_AGC_TUNE2];
-	byte agctune3[LEN_AGC_TUNE3];
-	byte drxtune0b[LEN_DRX_TUNE0b];
-	byte drxtune1a[LEN_DRX_TUNE1a];
-	byte drxtune1b[LEN_DRX_TUNE1b];
-	byte drxtune2[LEN_DRX_TUNE2];
-	byte drxtune4H[LEN_DRX_TUNE4H];
-	byte ldecfg1[LEN_LDE_CFG1];
-	byte ldecfg2[LEN_LDE_CFG2];
-	byte lderepc[LEN_LDE_REPC];
-	byte txpower[LEN_TX_POWER];
-	byte rfrxctrlh[LEN_RF_RXCTRLH];
-	byte rftxctrl[LEN_RF_TXCTRL];
-	byte tcpgdelay[LEN_TC_PGDELAY];
-	byte fspllcfg[LEN_FS_PLLCFG];
-	byte fsplltune[LEN_FS_PLLTUNE];
-	byte fsxtalt[LEN_FS_XTALT]; // not used?
+	uint8_t agctune1[LEN_AGC_TUNE1];
+	uint8_t agctune2[LEN_AGC_TUNE2];
+	uint8_t agctune3[LEN_AGC_TUNE3];
+	uint8_t drxtune0b[LEN_DRX_TUNE0b];
+	uint8_t drxtune1a[LEN_DRX_TUNE1a];
+	uint8_t drxtune1b[LEN_DRX_TUNE1b];
+	uint8_t drxtune2[LEN_DRX_TUNE2];
+	uint8_t drxtune4H[LEN_DRX_TUNE4H];
+	uint8_t ldecfg1[LEN_LDE_CFG1];
+	uint8_t ldecfg2[LEN_LDE_CFG2];
+	uint8_t lderepc[LEN_LDE_REPC];
+	uint8_t txpower[LEN_TX_POWER];
+	uint8_t rfrxctrlh[LEN_RF_RXCTRLH];
+	uint8_t rftxctrl[LEN_RF_TXCTRL];
+	uint8_t tcpgdelay[LEN_TC_PGDELAY];
+	uint8_t fspllcfg[LEN_FS_PLLCFG];
+	uint8_t fsplltune[LEN_FS_PLLTUNE];
+	uint8_t fsxtalt[LEN_FS_XTALT]; // not used?
 	// AGC_TUNE1
 	if(_pulseFrequency == TX_PULSE_FREQ_16MHZ) {
 		writeValueToBytes(agctune1, 0x8870, LEN_AGC_TUNE1);
@@ -676,21 +692,21 @@ void DW1000Class::handleInterrupt() {
 
 
 void DW1000Class::getPrintableDeviceIdentifier(char msgBuffer[]) {
-	byte data[LEN_DEV_ID];
+	uint8_t data[LEN_DEV_ID];
 	readBytes(DEV_ID, NO_SUB, data, LEN_DEV_ID);
 	sprintf(msgBuffer, "%02X - model: %d, version: %d, revision: %d",
 					(uint16_t)((data[3] << 8) | data[2]), data[1], (data[0] >> 4) & 0x0F, data[0] & 0x0F);
 }
 
 void DW1000Class::getPrintableExtendedUniqueIdentifier(char msgBuffer[]) {
-	byte data[LEN_EUI];
+	uint8_t data[LEN_EUI];
 	readBytes(EUI, NO_SUB, data, LEN_EUI);
 	sprintf(msgBuffer, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
 					data[7], data[6], data[5], data[4], data[3], data[2], data[1], data[0]);
 }
 
 void DW1000Class::getPrintableNetworkIdAndShortAddress(char msgBuffer[]) {
-	byte data[LEN_PANADR];
+	uint8_t data[LEN_PANADR];
 	readBytes(PANADR, NO_SUB, data, LEN_PANADR);
 	sprintf(msgBuffer, "PAN: %02X, Short Address: %02X",
 					(uint16_t)((data[3] << 8) | data[2]), (uint16_t)((data[1] << 8) | data[0]));
@@ -797,13 +813,13 @@ void DW1000Class::writeTransmitFrameControlRegister() {
  * ######################################################################### */
 
 void DW1000Class::setNetworkId(uint16_t val) {
-	_networkAndAddress[2] = (byte)(val & 0xFF);
-	_networkAndAddress[3] = (byte)((val >> 8) & 0xFF);
+	_networkAndAddress[2] = (uint8_t)(val & 0xFF);
+	_networkAndAddress[3] = (uint8_t)((val >> 8) & 0xFF);
 }
 
 void DW1000Class::setDeviceAddress(uint16_t val) {
-	_networkAndAddress[0] = (byte)(val & 0xFF);
-	_networkAndAddress[1] = (byte)((val >> 8) & 0xFF);
+	_networkAndAddress[0] = (uint8_t)(val & 0xFF);
+	_networkAndAddress[1] = (uint8_t)((val >> 8) & 0xFF);
 }
 
 uint8_t DW1000Class::nibbleFromChar(char c) {
@@ -819,8 +835,8 @@ uint8_t DW1000Class::nibbleFromChar(char c) {
 	return 255;
 }
 
-void DW1000Class::convertToByte(char string[], byte* bytes) {
-	byte    eui_byte[LEN_EUI];
+void DW1000Class::convertToByte(char string[], uint8_t* bytes) {
+	uint8_t    eui_byte[LEN_EUI];
 	// we fill it with the char array under the form of "AA:FF:1C:...."
 	for(uint16_t i = 0; i < LEN_EUI; i++) {
 		eui_byte[i] = (nibbleFromChar(string[i*3]) << 4)+nibbleFromChar(string[i*3+1]);
@@ -830,13 +846,13 @@ void DW1000Class::convertToByte(char string[], byte* bytes) {
 
 void DW1000Class::getTempAndVbat(float& temp, float& vbat) {
 	// follow the procedure from section 6.4 of the User Manual
-	byte step1 = 0x80; writeBytes(RF_CONF, 0x11, &step1, 1);
-	byte step2 = 0x0A; writeBytes(RF_CONF, 0x12, &step2, 1);
-	byte step3 = 0x0F; writeBytes(RF_CONF, 0x12, &step3, 1);
-	byte step4 = 0x01; writeBytes(TX_CAL, NO_SUB, &step4, 1);
-	byte step5 = 0x00; writeBytes(TX_CAL, NO_SUB, &step5, 1);
-	byte sar_lvbat = 0; readBytes(TX_CAL, 0x03, &sar_lvbat, 1);
-	byte sar_ltemp = 0; readBytes(TX_CAL, 0x04, &sar_ltemp, 1);
+	uint8_t step1 = 0x80; writeBytes(RF_CONF, 0x11, &step1, 1);
+	uint8_t step2 = 0x0A; writeBytes(RF_CONF, 0x12, &step2, 1);
+	uint8_t step3 = 0x0F; writeBytes(RF_CONF, 0x12, &step3, 1);
+	uint8_t step4 = 0x01; writeBytes(TX_CAL, NO_SUB, &step4, 1);
+	uint8_t step5 = 0x00; writeBytes(TX_CAL, NO_SUB, &step5, 1);
+	uint8_t sar_lvbat = 0; readBytes(TX_CAL, 0x03, &sar_lvbat, 1);
+	uint8_t sar_ltemp = 0; readBytes(TX_CAL, 0x04, &sar_ltemp, 1);
 	
 	// calculate voltage and temperature
 	vbat = (sar_lvbat - _vmeas3v3) / 173.0f + 3.3f;
@@ -844,14 +860,14 @@ void DW1000Class::getTempAndVbat(float& temp, float& vbat) {
 }
 
 void DW1000Class::setEUI(char eui[]) {
-	byte eui_byte[LEN_EUI];
+	uint8_t eui_byte[LEN_EUI];
 	convertToByte(eui, eui_byte);
 	setEUI(eui_byte);
 }
 
-void DW1000Class::setEUI(byte eui[]) {
+void DW1000Class::setEUI(uint8_t eui[]) {
 	//we reverse the address->
-	byte    reverseEUI[8];
+	uint8_t    reverseEUI[8];
 	uint8_t     size = 8;
 	for(uint8_t i    = 0; i < size; i++) {
 		*(reverseEUI+i) = *(eui+size-i-1);
@@ -861,72 +877,72 @@ void DW1000Class::setEUI(byte eui[]) {
 
 
 //Frame Filtering BIT in the SYS_CFG register
-void DW1000Class::setFrameFilter(boolean val) {
+void DW1000Class::setFrameFilter(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, FFEN_BIT, val);
 }
 
-void DW1000Class::setFrameFilterBehaveCoordinator(boolean val) {
+void DW1000Class::setFrameFilterBehaveCoordinator(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, FFBC_BIT, val);
 }
 
-void DW1000Class::setFrameFilterAllowBeacon(boolean val) {
+void DW1000Class::setFrameFilterAllowBeacon(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, FFAB_BIT, val);
 }
 
-void DW1000Class::setFrameFilterAllowData(boolean val) {
+void DW1000Class::setFrameFilterAllowData(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, FFAD_BIT, val);
 }
 
-void DW1000Class::setFrameFilterAllowAcknowledgement(boolean val) {
+void DW1000Class::setFrameFilterAllowAcknowledgement(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, FFAA_BIT, val);
 }
 
-void DW1000Class::setFrameFilterAllowMAC(boolean val) {
+void DW1000Class::setFrameFilterAllowMAC(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, FFAM_BIT, val);
 }
 
-void DW1000Class::setFrameFilterAllowReserved(boolean val) {
+void DW1000Class::setFrameFilterAllowReserved(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, FFAR_BIT, val);
 }
 
 
-void DW1000Class::setDoubleBuffering(boolean val) {
+void DW1000Class::setDoubleBuffering(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, DIS_DRXB_BIT, !val);
 }
 
-void DW1000Class::setInterruptPolarity(boolean val) {
+void DW1000Class::setInterruptPolarity(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, HIRQ_POL_BIT, val);
 }
 
-void DW1000Class::setReceiverAutoReenable(boolean val) {
+void DW1000Class::setReceiverAutoReenable(bool val) {
 	setBit(_syscfg, LEN_SYS_CFG, RXAUTR_BIT, val);
 }
 
-void DW1000Class::interruptOnSent(boolean val) {
+void DW1000Class::interruptOnSent(bool val) {
 	setBit(_sysmask, LEN_SYS_MASK, TXFRS_BIT, val);
 }
 
-void DW1000Class::interruptOnReceived(boolean val) {
+void DW1000Class::interruptOnReceived(bool val) {
 	setBit(_sysmask, LEN_SYS_MASK, RXDFR_BIT, val);
 	setBit(_sysmask, LEN_SYS_MASK, RXFCG_BIT, val);
 }
 
-void DW1000Class::interruptOnReceiveFailed(boolean val) {
+void DW1000Class::interruptOnReceiveFailed(bool val) {
 	setBit(_sysmask, LEN_SYS_STATUS, LDEERR_BIT, val);
 	setBit(_sysmask, LEN_SYS_STATUS, RXFCE_BIT, val);
 	setBit(_sysmask, LEN_SYS_STATUS, RXPHE_BIT, val);
 	setBit(_sysmask, LEN_SYS_STATUS, RXRFSL_BIT, val);
 }
 
-void DW1000Class::interruptOnReceiveTimeout(boolean val) {
+void DW1000Class::interruptOnReceiveTimeout(bool val) {
 	setBit(_sysmask, LEN_SYS_MASK, RXRFTO_BIT, val);
 }
 
-void DW1000Class::interruptOnReceiveTimestampAvailable(boolean val) {
+void DW1000Class::interruptOnReceiveTimestampAvailable(bool val) {
 	setBit(_sysmask, LEN_SYS_MASK, LDEDONE_BIT, val);
 }
 
-void DW1000Class::interruptOnAutomaticAcknowledgeTrigger(boolean val) {
+void DW1000Class::interruptOnAutomaticAcknowledgeTrigger(bool val) {
 	setBit(_sysmask, LEN_SYS_MASK, AAT_BIT, val);
 }
 
@@ -995,22 +1011,22 @@ void DW1000Class::commitConfiguration() {
 	tune();
 	// TODO clean up code + antenna delay/calibration API
 	// TODO setter + check not larger two bytes integer
-	byte antennaDelayBytes[LEN_STAMP];
+	uint8_t antennaDelayBytes[LEN_STAMP];
 	writeValueToBytes(antennaDelayBytes, 16384, LEN_STAMP);
 	_antennaDelay.setTimestamp(antennaDelayBytes);
 	writeBytes(TX_ANTD, NO_SUB, antennaDelayBytes, LEN_TX_ANTD);
 	writeBytes(LDE_IF, LDE_RXANTD_SUB, antennaDelayBytes, LEN_LDE_RXANTD);
 }
 
-void DW1000Class::waitForResponse(boolean val) {
+void DW1000Class::waitForResponse(bool val) {
 	setBit(_sysctrl, LEN_SYS_CTRL, WAIT4RESP_BIT, val);
 }
 
-void DW1000Class::suppressFrameCheck(boolean val) {
+void DW1000Class::suppressFrameCheck(bool val) {
 	_frameCheck = !val;
 }
 
-void DW1000Class::useSmartPower(boolean smartPower) {
+void DW1000Class::useSmartPower(bool smartPower) {
 	_smartPower = smartPower;
 	setBit(_syscfg, LEN_SYS_CFG, DIS_STXP_BIT, !smartPower);
 }
@@ -1024,7 +1040,7 @@ DW1000Time DW1000Class::setDelay(const DW1000Time& delay) {
 		// in idle, ignore
 		return DW1000Time();
 	}
-	byte       delayBytes[5];
+	uint8_t       delayBytes[5];
 	DW1000Time futureTime;
 	getSystemTimestamp(futureTime);
 	futureTime += delay;
@@ -1039,10 +1055,10 @@ DW1000Time DW1000Class::setDelay(const DW1000Time& delay) {
 }
 
 
-void DW1000Class::setDataRate(byte rate) {
+void DW1000Class::setDataRate(uint8_t rate) {
 	rate &= 0x03;
 	_txfctrl[1] &= 0x83;
-	_txfctrl[1] |= (byte)((rate << 5) & 0xFF);
+	_txfctrl[1] |= (uint8_t)((rate << 5) & 0xFF);
 	// special 110kbps flag
 	if(rate == TRX_RATE_110KBPS) {
 		setBit(_syscfg, LEN_SYS_CFG, RXM110K_BIT, true);
@@ -1059,7 +1075,7 @@ void DW1000Class::setDataRate(byte rate) {
 		setBit(_chanctrl, LEN_CHAN_CTRL, TNSSFD_BIT, true);
 		setBit(_chanctrl, LEN_CHAN_CTRL, RNSSFD_BIT, true);
 	}
-	byte sfdLength;
+	uint8_t sfdLength;
 	if(rate == TRX_RATE_6800KBPS) {
 		sfdLength = 0x08;
 	} else if(rate == TRX_RATE_850KBPS) {
@@ -1071,23 +1087,23 @@ void DW1000Class::setDataRate(byte rate) {
 	_dataRate = rate;
 }
 
-void DW1000Class::setPulseFrequency(byte freq) {
+void DW1000Class::setPulseFrequency(uint8_t freq) {
 	freq &= 0x03;
 	_txfctrl[2] &= 0xFC;
-	_txfctrl[2] |= (byte)(freq & 0xFF);
+	_txfctrl[2] |= (uint8_t)(freq & 0xFF);
 	_chanctrl[2] &= 0xF3;
-	_chanctrl[2] |= (byte)((freq << 2) & 0xFF);
+	_chanctrl[2] |= (uint8_t)((freq << 2) & 0xFF);
 	_pulseFrequency = freq;
 }
 
-byte DW1000Class::getPulseFrequency() {
+uint8_t DW1000Class::getPulseFrequency() {
 	return _pulseFrequency;
 }
 
-void DW1000Class::setPreambleLength(byte prealen) {
+void DW1000Class::setPreambleLength(uint8_t prealen) {
 	prealen &= 0x0F;
 	_txfctrl[2] &= 0xC3;
-	_txfctrl[2] |= (byte)((prealen << 2) & 0xFF);
+	_txfctrl[2] |= (uint8_t)((prealen << 2) & 0xFF);
 	if(prealen == TX_PREAMBLE_LEN_64 || prealen == TX_PREAMBLE_LEN_128) {
 		_pacSize = PAC_SIZE_8;
 	} else if(prealen == TX_PREAMBLE_LEN_256 || prealen == TX_PREAMBLE_LEN_512) {
@@ -1100,13 +1116,13 @@ void DW1000Class::setPreambleLength(byte prealen) {
 	_preambleLength = prealen;
 }
 
-void DW1000Class::useExtendedFrameLength(boolean val) {
+void DW1000Class::useExtendedFrameLength(bool val) {
 	_extendedFrameLength = (val ? FRAME_LENGTH_EXTENDED : FRAME_LENGTH_NORMAL);
 	_syscfg[2] &= 0xFC;
 	_syscfg[2] |= _extendedFrameLength;
 }
 
-void DW1000Class::receivePermanently(boolean val) {
+void DW1000Class::receivePermanently(bool val) {
 	_permanentReceive = val;
 	if(val) {
 		// in case permanent, also reenable receiver once failed
@@ -1115,13 +1131,13 @@ void DW1000Class::receivePermanently(boolean val) {
 	}
 }
 
-void DW1000Class::setChannel(byte channel) {
+void DW1000Class::setChannel(uint8_t channel) {
 	channel &= 0xF;
 	_chanctrl[0] = ((channel | (channel << 4)) & 0xFF);
 	_channel = channel;
 }
 
-void DW1000Class::setPreambleCode(byte preacode) {
+void DW1000Class::setPreambleCode(uint8_t preacode) {
 	preacode &= 0x1F;
 	_chanctrl[2] &= 0x3F;
 	_chanctrl[2] |= ((preacode << 6) & 0xFF);
@@ -1163,7 +1179,7 @@ void DW1000Class::setDefaults() {
 	}
 }
 
-void DW1000Class::setData(byte data[], uint16_t n) {
+void DW1000Class::setData(uint8_t data[], uint16_t n) {
 	if(_frameCheck) {
 		n += 2; // two bytes CRC-16
 	}
@@ -1175,18 +1191,19 @@ void DW1000Class::setData(byte data[], uint16_t n) {
 	}
 	// transmit data and length
 	writeBytes(TX_BUFFER, NO_SUB, data, n);
-	_txfctrl[0] = (byte)(n & 0xFF); // 1 byte (regular length + 1 bit)
+	_txfctrl[0] = (uint8_t)(n & 0xFF); // 1 uint8_t (regular length + 1 bit)
 	_txfctrl[1] &= 0xE0;
-	_txfctrl[1] |= (byte)((n >> 8) & 0x03);  // 2 added bits if extended length
+	_txfctrl[1] |= (uint8_t)((n >> 8) & 0x03);  // 2 added bits if extended length
 }
 
-void DW1000Class::setData(const String& data) {
+/*mwm no string void DW1000Class::setData(const String& data) {
 	uint16_t n = data.length()+1;
-	byte* dataBytes = (byte*)malloc(n);
+	uint8_t* dataBytes = (uint8_t*)malloc(n);
 	data.getBytes(dataBytes, n);
 	setData(dataBytes, n);
 	free(dataBytes);
 }
+*/
 
 // TODO reorder
 uint16_t DW1000Class::getDataLength() {
@@ -1196,7 +1213,7 @@ uint16_t DW1000Class::getDataLength() {
 		len = ((((uint16_t)_txfctrl[1] << 8) | (uint16_t)_txfctrl[0]) & 0x03FF);
 	} else if(_deviceMode == RX_MODE) {
 		// 10 bits of RX frame control register
-		byte rxFrameInfo[LEN_RX_FINFO];
+		uint8_t rxFrameInfo[LEN_RX_FINFO];
 		readBytes(RX_FINFO, NO_SUB, rxFrameInfo, LEN_RX_FINFO);
 		len = ((((uint16_t)rxFrameInfo[1] << 8) | (uint16_t)rxFrameInfo[0]) & 0x03FF);
 	}
@@ -1206,20 +1223,20 @@ uint16_t DW1000Class::getDataLength() {
 	return len;
 }
 
-void DW1000Class::getData(byte data[], uint16_t n) {
+void DW1000Class::getData(uint8_t data[], uint16_t n) {
 	if(n <= 0) {
 		return;
 	}
 	readBytes(RX_BUFFER, NO_SUB, data, n);
 }
 
-void DW1000Class::getData(String& data) {
+/*mwm no string void DW1000Class::getData(String& data) {
 	uint16_t i;
 	uint16_t n = getDataLength(); // number of bytes w/o the two FCS ones
 	if(n <= 0) { // TODO
 		return;
 	}
-	byte* dataBytes = (byte*)malloc(n);
+	uint8_t* dataBytes = (uint8_t*)malloc(n);
 	getData(dataBytes, n);
 	// clear string
 	data.remove(0);
@@ -1230,22 +1247,23 @@ void DW1000Class::getData(String& data) {
 	}
 	free(dataBytes);
 }
+*/
 
 void DW1000Class::getTransmitTimestamp(DW1000Time& time) {
-	byte txTimeBytes[LEN_TX_STAMP];
+	uint8_t txTimeBytes[LEN_TX_STAMP];
 	readBytes(TX_TIME, TX_STAMP_SUB, txTimeBytes, LEN_TX_STAMP);
 	time.setTimestamp(txTimeBytes);
 }
 
 void DW1000Class::getReceiveTimestamp(DW1000Time& time) {
-	byte rxTimeBytes[LEN_RX_STAMP];
+	uint8_t rxTimeBytes[LEN_RX_STAMP];
 	readBytes(RX_TIME, RX_STAMP_SUB, rxTimeBytes, LEN_RX_STAMP);
 	time.setTimestamp(rxTimeBytes);
 	// correct timestamp (i.e. consider range bias)
 	correctTimestamp(time);
 }
 
-// TODO check function, different type violations between byte and int
+// TODO check function, different type violations between uint8_t and int
 void DW1000Class::correctTimestamp(DW1000Time& timestamp) {
 	// base line dBm, which is -61, 2 dBm steps, total 18 data points (down to -95 dBm)
 	float rxPowerBase     = -(getReceivePower()+61.0f)*0.5f;
@@ -1300,40 +1318,40 @@ void DW1000Class::correctTimestamp(DW1000Time& timestamp) {
 }
 
 void DW1000Class::getSystemTimestamp(DW1000Time& time) {
-	byte sysTimeBytes[LEN_SYS_TIME];
+	uint8_t sysTimeBytes[LEN_SYS_TIME];
 	readBytes(SYS_TIME, NO_SUB, sysTimeBytes, LEN_SYS_TIME);
 	time.setTimestamp(sysTimeBytes);
 }
 
-void DW1000Class::getTransmitTimestamp(byte data[]) {
+void DW1000Class::getTransmitTimestamp(uint8_t data[]) {
 	readBytes(TX_TIME, TX_STAMP_SUB, data, LEN_TX_STAMP);
 }
 
-void DW1000Class::getReceiveTimestamp(byte data[]) {
+void DW1000Class::getReceiveTimestamp(uint8_t data[]) {
 	readBytes(RX_TIME, RX_STAMP_SUB, data, LEN_RX_STAMP);
 }
 
-void DW1000Class::getSystemTimestamp(byte data[]) {
+void DW1000Class::getSystemTimestamp(uint8_t data[]) {
 	readBytes(SYS_TIME, NO_SUB, data, LEN_SYS_TIME);
 }
 
-boolean DW1000Class::isTransmitDone() {
+bool DW1000Class::isTransmitDone() {
 	return getBit(_sysstatus, LEN_SYS_STATUS, TXFRS_BIT);
 }
 
-boolean DW1000Class::isReceiveTimestampAvailable() {
+bool DW1000Class::isReceiveTimestampAvailable() {
 	return getBit(_sysstatus, LEN_SYS_STATUS, LDEDONE_BIT);
 }
 
-boolean DW1000Class::isReceiveDone() {
+bool DW1000Class::isReceiveDone() {
 	if(_frameCheck) {
 		return getBit(_sysstatus, LEN_SYS_STATUS, RXFCG_BIT);
 	}
 	return getBit(_sysstatus, LEN_SYS_STATUS, RXDFR_BIT);
 }
 
-boolean DW1000Class::isReceiveFailed() {
-	boolean ldeErr, rxCRCErr, rxHeaderErr, rxDecodeErr;
+bool DW1000Class::isReceiveFailed() {
+	bool ldeErr, rxCRCErr, rxHeaderErr, rxDecodeErr;
 	ldeErr      = getBit(_sysstatus, LEN_SYS_STATUS, LDEERR_BIT);
 	rxCRCErr    = getBit(_sysstatus, LEN_SYS_STATUS, RXFCE_BIT);
 	rxHeaderErr = getBit(_sysstatus, LEN_SYS_STATUS, RXPHE_BIT);
@@ -1344,12 +1362,12 @@ boolean DW1000Class::isReceiveFailed() {
 	return false;
 }
 
-boolean DW1000Class::isReceiveTimeout() {
+bool DW1000Class::isReceiveTimeout() {
 	return getBit(_sysstatus, LEN_SYS_STATUS, RXRFTO_BIT);
 }
 
-boolean DW1000Class::isClockProblem() {
-	boolean clkllErr, rfllErr;
+bool DW1000Class::isClockProblem() {
+	bool clkllErr, rfllErr;
 	clkllErr = getBit(_sysstatus, LEN_SYS_STATUS, CLKPLL_LL_BIT);
 	rfllErr  = getBit(_sysstatus, LEN_SYS_STATUS, RFPLL_LL_BIT);
 	if(clkllErr || rfllErr) {
@@ -1390,8 +1408,8 @@ void DW1000Class::clearTransmitStatus() {
 }
 
 float DW1000Class::getReceiveQuality() {
-	byte         noiseBytes[LEN_STD_NOISE];
-	byte         fpAmpl2Bytes[LEN_FP_AMPL2];
+	uint8_t         noiseBytes[LEN_STD_NOISE];
+	uint8_t         fpAmpl2Bytes[LEN_FP_AMPL2];
 	uint16_t     noise, f2;
 	readBytes(RX_FQUAL, STD_NOISE_SUB, noiseBytes, LEN_STD_NOISE);
 	readBytes(RX_FQUAL, FP_AMPL2_SUB, fpAmpl2Bytes, LEN_FP_AMPL2);
@@ -1401,10 +1419,10 @@ float DW1000Class::getReceiveQuality() {
 }
 
 float DW1000Class::getFirstPathPower() {
-	byte         fpAmpl1Bytes[LEN_FP_AMPL1];
-	byte         fpAmpl2Bytes[LEN_FP_AMPL2];
-	byte         fpAmpl3Bytes[LEN_FP_AMPL3];
-	byte         rxFrameInfo[LEN_RX_FINFO];
+	uint8_t         fpAmpl1Bytes[LEN_FP_AMPL1];
+	uint8_t         fpAmpl2Bytes[LEN_FP_AMPL2];
+	uint8_t         fpAmpl3Bytes[LEN_FP_AMPL3];
+	uint8_t         rxFrameInfo[LEN_RX_FINFO];
 	uint16_t     f1, f2, f3, N;
 	float        A, corrFac;
 	readBytes(RX_TIME, FP_AMPL1_SUB, fpAmpl1Bytes, LEN_FP_AMPL1);
@@ -1433,8 +1451,8 @@ float DW1000Class::getFirstPathPower() {
 }
 
 float DW1000Class::getReceivePower() {
-	byte     cirPwrBytes[LEN_CIR_PWR];
-	byte     rxFrameInfo[LEN_RX_FINFO];
+	uint8_t     cirPwrBytes[LEN_CIR_PWR];
+	uint8_t     rxFrameInfo[LEN_RX_FINFO];
 	uint32_t twoPower17 = 131072;
 	uint16_t C, N;
 	float    A, corrFac;
@@ -1467,15 +1485,15 @@ float DW1000Class::getReceivePower() {
  * Set the value of a bit in an array of bytes that are considered
  * consecutive and stored from MSB to LSB.
  * @param data
- * 		The number as byte array.
+ * 		The number as uint8_t array.
  * @param n
  * 		The number of bytes in the array.
  * @param bit
  * 		The position of the bit to be set.
  * @param val
- *		The boolean value to be set to the given bit position.
+ *		The bool value to be set to the given bit position.
  */
-void DW1000Class::setBit(byte data[], uint16_t n, uint16_t bit, boolean val) {
+void DW1000Class::setBit(uint8_t data[], uint16_t n, uint16_t bit, bool val) {
 	uint16_t idx;
 	uint8_t shift;
 	
@@ -1483,7 +1501,7 @@ void DW1000Class::setBit(byte data[], uint16_t n, uint16_t bit, boolean val) {
 	if(idx >= n) {
 		return; // TODO proper error handling: out of bounds
 	}
-	byte* targetByte = &data[idx];
+	uint8_t* targetByte = &data[idx];
 	shift = bit%8;
 	if(val) {
 		bitSet(*targetByte, shift);
@@ -1496,13 +1514,13 @@ void DW1000Class::setBit(byte data[], uint16_t n, uint16_t bit, boolean val) {
  * Check the value of a bit in an array of bytes that are considered
  * consecutive and stored from MSB to LSB.
  * @param data
- * 		The number as byte array.
+ * 		The number as uint8_t array.
  * @param n
  * 		The number of bytes in the array.
  * @param bit
  * 		The position of the bit to be checked.
  */
-boolean DW1000Class::getBit(byte data[], uint16_t n, uint16_t bit) {
+bool DW1000Class::getBit(uint8_t data[], uint16_t n, uint16_t bit) {
 	uint16_t idx;
 	uint8_t  shift;
 	
@@ -1510,13 +1528,13 @@ boolean DW1000Class::getBit(byte data[], uint16_t n, uint16_t bit) {
 	if(idx >= n) {
 		return false; // TODO proper error handling: out of bounds
 	}
-	byte targetByte = data[idx];
+	uint8_t targetByte = data[idx];
 	shift = bit%8;
 	
-	return bitRead(targetByte, shift); // TODO wrong type returned byte instead of boolean
+	return bitRead(targetByte, shift); // TODO wrong type returned uint8_t instead of bool
 }
 
-void DW1000Class::writeValueToBytes(byte data[], int32_t val, uint16_t n) {
+void DW1000Class::writeValueToBytes(uint8_t data[], int32_t val, uint16_t n) {
 	uint16_t i;
 	for(i = 0; i < n; i++) {
 		data[i] = ((val >> (i*8)) & 0xFF); // TODO bad types - signed unsigned problem
@@ -1533,8 +1551,8 @@ void DW1000Class::writeValueToBytes(byte data[], int32_t val, uint16_t n) {
  *		The number of bytes expected to be received.
  */
 // TODO incomplete doc
-void DW1000Class::readBytes(byte cmd, uint16_t offset, byte data[], uint16_t n) {
-	byte header[3];
+void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16_t n) {
+	uint8_t header[3];
 	uint8_t headerLen = 1;
 	uint16_t i = 0;
 	
@@ -1544,14 +1562,15 @@ void DW1000Class::readBytes(byte cmd, uint16_t offset, byte data[], uint16_t n) 
 	} else {
 		header[0] = READ_SUB | cmd;
 		if(offset < 128) {
-			header[1] = (byte)offset;
+			header[1] = (uint8_t)offset;
 			headerLen++;
 		} else {
-			header[1] = RW_SUB_EXT | (byte)offset;
-			header[2] = (byte)(offset >> 7);
+			header[1] = RW_SUB_EXT | (uint8_t)offset;
+			header[2] = (uint8_t)(offset >> 7);
 			headerLen += 2;
 		}
 	}
+	_spi.
 	SPI.beginTransaction(*_currentSPI);
 	digitalWrite(_ss, LOW);
 	for(i = 0; i < headerLen; i++) {
@@ -1567,8 +1586,8 @@ void DW1000Class::readBytes(byte cmd, uint16_t offset, byte data[], uint16_t n) 
 
 // always 4 bytes
 // TODO why always 4 bytes? can be different, see p. 58 table 10 otp memory map
-void DW1000Class::readBytesOTP(uint16_t address, byte data[]) {
-	byte addressBytes[LEN_OTP_ADDR];
+void DW1000Class::readBytesOTP(uint16_t address, uint8_t data[]) {
+	uint8_t addressBytes[LEN_OTP_ADDR];
 	
 	// p60 - 6.3.3 Reading a value from OTP memory
 	// bytes of address
@@ -1586,7 +1605,7 @@ void DW1000Class::readBytesOTP(uint16_t address, byte data[]) {
 }
 
 // Helper to set a single register
-void DW1000Class::writeByte(byte cmd, uint16_t offset, byte data) {
+void DW1000Class::writeByte(uint8_t cmd, uint16_t offset, uint8_t data) {
 	writeBytes(cmd, offset, &data, 1);
 }
 
@@ -1603,9 +1622,9 @@ void DW1000Class::writeByte(byte cmd, uint16_t offset, byte data) {
  *		The number of bytes to be written (take care not to go out of bounds of
  * 		the register).
  */
-// TODO offset really bigger than byte?
-void DW1000Class::writeBytes(byte cmd, uint16_t offset, byte data[], uint16_t data_size) {
-	byte header[3];
+// TODO offset really bigger than uint8_t?
+void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16_t data_size) {
+	uint8_t header[3];
 	uint8_t  headerLen = 1;
 	uint16_t  i = 0;
 	
@@ -1616,11 +1635,11 @@ void DW1000Class::writeBytes(byte cmd, uint16_t offset, byte data[], uint16_t da
 	} else {
 		header[0] = WRITE_SUB | cmd;
 		if(offset < 128) {
-			header[1] = (byte)offset;
+			header[1] = (uint8_t)offset;
 			headerLen++;
 		} else {
-			header[1] = RW_SUB_EXT | (byte)offset;
-			header[2] = (byte)(offset >> 7);
+			header[1] = RW_SUB_EXT | (uint8_t)offset;
+			header[2] = (uint8_t)(offset >> 7);
 			headerLen += 2;
 		}
 	}
@@ -1638,11 +1657,11 @@ void DW1000Class::writeBytes(byte cmd, uint16_t offset, byte data[], uint16_t da
 }
 
 
-void DW1000Class::getPrettyBytes(byte data[], char msgBuffer[], uint16_t n) {
+void DW1000Class::getPrettyBytes(uint8_t data[], char msgBuffer[], uint16_t n) {
 	uint16_t i, j, b;
 	b     = sprintf(msgBuffer, "Data, bytes: %d\nB: 7 6 5 4 3 2 1 0\n", n); // TODO - type
 	for(i = 0; i < n; i++) {
-		byte curByte = data[i];
+		uint8_t curByte = data[i];
 		snprintf(&msgBuffer[b++], 2, "%d", (i+1));
 		msgBuffer[b++] = (char)((i+1) & 0xFF);
 		msgBuffer[b++] = ':';
@@ -1661,13 +1680,13 @@ void DW1000Class::getPrettyBytes(byte data[], char msgBuffer[], uint16_t n) {
 	msgBuffer[b++] = '\0';
 }
 
-void DW1000Class::getPrettyBytes(byte cmd, uint16_t offset, char msgBuffer[], uint16_t n) {
+void DW1000Class::getPrettyBytes(uint8_t cmd, uint16_t offset, char msgBuffer[], uint16_t n) {
 	uint16_t i, j, b;
-	byte* readBuf = (byte*)malloc(n);
+	uint8_t* readBuf = (uint8_t*)malloc(n);
 	readBytes(cmd, offset, readBuf, n);
 	b     = sprintf(msgBuffer, "Reg: 0x%02x, bytes: %d\nB: 7 6 5 4 3 2 1 0\n", cmd, n);  // TODO - tpye
 	for(i = 0; i < n; i++) {
-		byte curByte = readBuf[i];
+		uint8_t curByte = readBuf[i];
 		snprintf(&msgBuffer[b++], 2, "%d", (i+1));
 		msgBuffer[b++] = (char)((i+1) & 0xFF);
 		msgBuffer[b++] = ':';

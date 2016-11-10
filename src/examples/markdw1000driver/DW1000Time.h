@@ -30,7 +30,7 @@
 #ifndef DW1000TIME_H
 #define DW1000TIME_H
 
-#include <Arduino.h>
+//#include <Arduino.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include "DW1000CompileOptions.h"
@@ -69,7 +69,7 @@ public:
 	// constructor
 	DW1000Time();
 	DW1000Time(int64_t time);
-	DW1000Time(byte data[]);
+	DW1000Time(uint8_t data[]);
 	DW1000Time(const DW1000Time& copy);
 	DW1000Time(float timeUs);
 	DW1000Time(int32_t value, float factorUs);
@@ -78,7 +78,7 @@ public:
 	// setter
 	// dw1000 timestamp, increase of +1 approx approx. 15.65ps real time
 	void setTimestamp(int64_t value);
-	void setTimestamp(byte data[]);
+	void setTimestamp(uint8_t data[]);
 	void setTimestamp(const DW1000Time& copy);
 	
 	// real time in us
@@ -87,13 +87,13 @@ public:
 	
 	// getter
 	int64_t getTimestamp() const;
-	void    getTimestamp(byte data[]) const;
+	void    getTimestamp(uint8_t data[]) const;
 	
 	DEPRECATED_MSG("use getAsMicroSeconds()")
 	float getAsFloat() const;
 	// getter, convert the timestamp to usual units
 	float getAsMicroSeconds() const;
-	//void getAsBytes(byte data[]) const; // TODO check why it is here, is it old version of getTimestamp(byte) ?
+	//void getAsBytes(uint8_t data[]) const; // TODO check why it is here, is it old version of getTimestamp(uint8_t) ?
 	float getAsMeters() const;
 	
 	DW1000Time& wrap();
@@ -124,8 +124,8 @@ public:
 	DW1000Time& operator/=(const DW1000Time& factor);
 	DW1000Time operator/(const DW1000Time& factor) const;
 	// compare
-	boolean operator==(const DW1000Time& cmp) const;
-	boolean operator!=(const DW1000Time& cmp) const;
+	bool operator==(const DW1000Time& cmp) const;
+	bool operator!=(const DW1000Time& cmp) const;
 
 #ifdef DW1000TIME_H_PRINTABLE
 	// print to serial for debug

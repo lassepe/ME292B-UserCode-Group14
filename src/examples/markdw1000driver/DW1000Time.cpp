@@ -22,6 +22,8 @@
 
 #include "DW1000Time.h"
 
+#include <cstring> //mwm: for memset
+
 /**
  * Initiates DW1000Time with 0
  */
@@ -41,7 +43,7 @@ DW1000Time::DW1000Time(int64_t time) {
  * Initiates DW1000Time with timestamp
  * @param data timestamp as byte array
  */
-DW1000Time::DW1000Time(byte data[]) {
+DW1000Time::DW1000Time(uint8_t data[]) {
 	setTimestamp(data);
 }
 
@@ -89,7 +91,7 @@ void DW1000Time::setTimestamp(int64_t value) {
  * Set timestamp
  * @param data timestamp as byte array
  */
-void DW1000Time::setTimestamp(byte data[]) {
+void DW1000Time::setTimestamp(uint8_t data[]) {
 	_timestamp = 0;
 	for(uint8_t i = 0; i < LENGTH_TIMESTAMP; i++) {
 		_timestamp |= ((int64_t)data[i] << (i*8));
@@ -139,10 +141,10 @@ int64_t DW1000Time::getTimestamp() const {
  * Get timestamp as byte array
  * @param data var where data should be written
  */
-void DW1000Time::getTimestamp(byte data[]) const {
+void DW1000Time::getTimestamp(uint8_t data[]) const {
 	memset(data, 0, LENGTH_TIMESTAMP);
 	for(uint8_t i = 0; i < LENGTH_TIMESTAMP; i++) {
-		data[i] = (byte)((_timestamp >> (i*8)) & 0xFF);
+		data[i] = (uint8_t)((_timestamp >> (i*8)) & 0xFF);
 	}
 }
 
@@ -270,11 +272,11 @@ DW1000Time DW1000Time::operator/(const DW1000Time& factor) const {
 }
 
 // compare
-boolean DW1000Time::operator==(const DW1000Time& cmp) const {
+bool DW1000Time::operator==(const DW1000Time& cmp) const {
 	return _timestamp == cmp.getTimestamp();
 }
 
-boolean DW1000Time::operator!=(const DW1000Time& cmp) const {
+bool DW1000Time::operator!=(const DW1000Time& cmp) const {
 	//return !(*this == cmp); // seems not as intended
 	return _timestamp != cmp.getTimestamp();
 }

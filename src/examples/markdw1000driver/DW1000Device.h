@@ -38,15 +38,15 @@ class DW1000Device {
 public:
 	//Constructor and destructor
 	DW1000Device();
-	DW1000Device(byte address[], byte shortAddress[]);
-	DW1000Device(byte address[], boolean shortOne = false);
+	DW1000Device(uint8_t address[], uint8_t shortAddress[]);
+	DW1000Device(uint8_t address[], bool shortOne = false);
 	~DW1000Device();
 	
 	//setters:
 	void setReplyTime(uint16_t replyDelayTimeUs);
 	void setAddress(char address[]);
-	void setAddress(byte* address);
-	void setShortAddress(byte address[]);
+	void setAddress(uint8_t* address);
+	void setShortAddress(uint8_t address[]);
 	
 	void setRange(float range);
 	void setRXPower(float power);
@@ -60,12 +60,12 @@ public:
 	//getters
 	uint16_t getReplyTime() { return _replyDelayTimeUS; }
 	
-	byte* getByteAddress();
+	uint8_t* getByteAddress();
 	
 	int8_t getIndex() { return _index; }
 	
 	//String getAddress();
-	byte* getByteShortAddress();
+	uint8_t* getByteShortAddress();
 	uint16_t getShortAddress();
 	//String getShortAddress();
 	
@@ -74,8 +74,8 @@ public:
 	float getFPPower();
 	float getQuality();
 	
-	boolean isAddressEqual(DW1000Device* device);
-	boolean isShortAddressEqual(DW1000Device* device);
+	bool isAddressEqual(DW1000Device* device);
+	bool isShortAddressEqual(DW1000Device* device);
 	
 	//functions which contains the date: (easier to put as public)
 	// timestamps to remember
@@ -87,13 +87,13 @@ public:
 	DW1000Time timeRangeReceived;
 	
 	void    noteActivity();
-	boolean isInactive();
+	bool isInactive();
 
 
 private:
 	//device ID
-	byte         _ownAddress[8];
-	byte         _shortAddress[2];
+	uint8_t         _ownAddress[8];
+	uint8_t         _shortAddress[2];
 	int32_t      _activity;
 	uint16_t     _replyDelayTimeUS;
 	int8_t       _index; // not used

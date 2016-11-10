@@ -1,3 +1,4 @@
+#if 0
 /*
  * Copyright (c) 2015 by Leopold Sayous <leosayous@gmail.com> and Thomas Trojer <thomas@trojer.net>
  * Decawave DW1000 library for arduino.
@@ -37,8 +38,8 @@
 #ifndef _DW1000MAC_H_INCLUDED
 #define _DW1000MAC_H_INCLUDED
 
-#include <Arduino.h>
-#include "DW1000Device.h" 
+//#include <Arduino.h>
+#include "../markdw1000driver/DW1000Device.h" 
 
 class DW1000Device;
 
@@ -51,40 +52,42 @@ public:
 	
 	
 	//setters
-	void setDestinationAddress(byte* destinationAddress);
-	void setDestinationAddressShort(byte* shortDestinationAddress);
-	void setSourceAddress(byte* sourceAddress);
-	void setSourceAddressShort(byte* shortSourceAddress);
+	void setDestinationAddress(uint8_t* destinationAddress);
+	void setDestinationAddressShort(uint8_t* shortDestinationAddress);
+	void setSourceAddress(uint8_t* sourceAddress);
+	void setSourceAddressShort(uint8_t* shortSourceAddress);
 	
 	
 	//for poll message we use just 2 bytes address
 	//total=12 bytes
-	void generateBlinkFrame(byte frame[], byte sourceAddress[], byte sourceShortAddress[]);
+	void generateBlinkFrame(uint8_t frame[], uint8_t sourceAddress[], uint8_t sourceShortAddress[]);
 	
 	//the short fram usually for Resp, Final, or Report
 	//2 bytes for Desination Address and 2 bytes for Source Address
 	//total=9 bytes
-	void generateShortMACFrame(byte frame[], byte sourceShortAddress[], byte destinationShortAddress[]);
+	void generateShortMACFrame(uint8_t frame[], uint8_t sourceShortAddress[], uint8_t destinationShortAddress[]);
 	
 	//the long frame for Ranging init
 	//8 bytes for Destination Address and 2 bytes for Source Address
 	//total of
-	void generateLongMACFrame(byte frame[], byte sourceShortAddress[], byte destinationAddress[]);
+	void generateLongMACFrame(uint8_t frame[], uint8_t sourceShortAddress[], uint8_t destinationAddress[]);
 	
 	//in order to decode the frame and save source Address!
-	void decodeBlinkFrame(byte frame[], byte address[], byte shortAddress[]);
-	void decodeShortMACFrame(byte frame[], byte address[]);
-	void decodeLongMACFrame(byte frame[], byte address[]);
+	void decodeBlinkFrame(uint8_t frame[], uint8_t address[], uint8_t shortAddress[]);
+	void decodeShortMACFrame(uint8_t frame[], uint8_t address[]);
+	void decodeLongMACFrame(uint8_t frame[], uint8_t address[]);
 	
 	void incrementSeqNumber();
 
 
 private:
 	uint8_t _seqNumber = 0;
-	void reverseArray(byte to[], byte from[], int16_t size);
+	void reverseArray(uint8_t to[], uint8_t from[], int16_t size);
 	
 };
 
 
 #endif
 
+
+#endif

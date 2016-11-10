@@ -1,3 +1,4 @@
+#if 0
 /*
  * Copyright (c) 2015 by Thomas Trojer <thomas@trojer.net> and Leopold Sayous <leosayous@gmail.com>
  * Decawave DW1000 library for arduino.
@@ -72,16 +73,16 @@ class DW1000RangingClass {
 public:
 	//variables
 	// data buffer
-	static byte data[LEN_DATA];
+	static uint8_t data[LEN_DATA];
 	
 	//initialisation
 	static void    initCommunication(uint8_t myRST = DEFAULT_RST_PIN, uint8_t mySS = DEFAULT_SPI_SS_PIN, uint8_t myIRQ = 2);
-	static void    configureNetwork(uint16_t deviceAddress, uint16_t networkId, const byte mode[]);
+	static void    configureNetwork(uint16_t deviceAddress, uint16_t networkId, const uint8_t mode[]);
 	static void    generalStart();
-	static void    startAsAnchor(char address[], const byte mode[]);
-	static void    startAsTag(char address[], const byte mode[]);
-	static boolean addNetworkDevices(DW1000Device* device, boolean shortAddress);
-	static boolean addNetworkDevices(DW1000Device* device);
+	static void    startAsAnchor(char address[], const uint8_t mode[]);
+	static void    startAsTag(char address[], const uint8_t mode[]);
+	static bool addNetworkDevices(DW1000Device* device, bool shortAddress);
+	static bool addNetworkDevices(DW1000Device* device);
 	static void    removeNetworkDevices(int16_t index);
 	
 	//setters
@@ -89,16 +90,16 @@ public:
 	static void setResetPeriod(uint32_t resetPeriod);
 	
 	//getters
-	static byte* getCurrentAddress() { return _currentAddress; };
+	static uint8_t* getCurrentAddress() { return _currentAddress; };
 	
-	static byte* getCurrentShortAddress() { return _currentShortAddress; };
+	static uint8_t* getCurrentShortAddress() { return _currentShortAddress; };
 	
 	static uint8_t getNetworkDevicesNumber() { return _networkDevicesNumber; };
 	
 	//ranging functions
-	static int16_t detectMessageType(byte datas[]); // TODO check return type
+	static int16_t detectMessageType(uint8_t datas[]); // TODO check return type
 	static void loop();
-	static void useRangeFilter(boolean enabled);
+	static void useRangeFilter(bool enabled);
 	// Used for the smoothing algorithm (Exponential Moving Average). newValue must be >= 2. Default 15.
 	static void setRangeFilterValue(uint16_t newValue);
 	
@@ -114,10 +115,10 @@ public:
 	
 	
 	static DW1000Device* getDistantDevice();
-	static DW1000Device* searchDistantDevice(byte shortAddress[]);
+	static DW1000Device* searchDistantDevice(uint8_t shortAddress[]);
 	
 	//FOR DEBUGGING
-	static void visualizeDatas(byte datas[]);
+	static void visualizeDatas(uint8_t datas[]);
 
 
 private:
@@ -125,9 +126,9 @@ private:
 	static DW1000Device _networkDevices[MAX_DEVICES];
 	static uint8_t      _networkDevicesNumber;
 	static int16_t      _lastDistantDevice;
-	static byte         _currentAddress[8];
-	static byte         _currentShortAddress[2];
-	static byte         _lastSentToShortAddress[2];
+	static uint8_t         _currentAddress[8];
+	static uint8_t         _currentShortAddress[2];
+	static uint8_t         _lastSentToShortAddress[2];
 	static DW1000Mac    _globalMac;
 	static int32_t      timer;
 	static int16_t      counterForBlink;
@@ -142,12 +143,12 @@ private:
 	static int16_t          _type; //0 for tag and 1 for anchor
 	// TODO check type, maybe enum?
 	// message flow state
-	static volatile byte    _expectedMsgId;
+	static volatile uint8_t    _expectedMsgId;
 	// message sent/received state
-	static volatile boolean _sentAck;
-	static volatile boolean _receivedAck;
+	static volatile bool _sentAck;
+	static volatile bool _receivedAck;
 	// protocol error state
-	static boolean          _protocolFailed;
+	static bool          _protocolFailed;
 	// reset line to the chip
 	static uint8_t     _RST;
 	static uint8_t     _SS;
@@ -162,7 +163,7 @@ private:
 	static uint16_t     _successRangingCount;
 	static uint32_t    _rangingCountPeriod;
 	//ranging filter
-	static volatile boolean _useRangeFilter;
+	static volatile bool _useRangeFilter;
 	static uint16_t         _rangeFilterValue;
 	//_bias correction
 	static char  _bias_RSL[17]; // TODO remove or use
@@ -181,12 +182,12 @@ private:
 	//global functions:
 	static void checkForReset();
 	static void checkForInactiveDevices();
-	static void copyShortAddress(byte address1[], byte address2[]);
+	static void copyShortAddress(uint8_t address1[], uint8_t address2[]);
 	
 	//for ranging protocole (ANCHOR)
 	static void transmitInit();
-	static void transmit(byte datas[]);
-	static void transmit(byte datas[], DW1000Time time);
+	static void transmit(uint8_t datas[]);
+	static void transmit(uint8_t datas[], DW1000Time time);
 	static void transmitBlink();
 	static void transmitRangingInit(DW1000Device* myDistantDevice);
 	static void transmitPollAck(DW1000Device* myDistantDevice);
@@ -208,3 +209,5 @@ private:
 };
 
 extern DW1000RangingClass DW1000Ranging;
+
+#endif

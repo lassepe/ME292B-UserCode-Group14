@@ -31,8 +31,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <Arduino.h>
-#include <SPI.h>
+//#include <Arduino.h>
+//#include <SPI.h>
+#include <drivers/device/spi.h>
 #include "DW1000Constants.h"
 #include "DW1000Time.h"
 
@@ -46,7 +47,7 @@ public:
 	@param[in] irq The interrupt line/pin that connects the Arduino.
 	@param[in] rst The reset line/pin for hard resets of ICs that connect to the Arduino. Value 0xff means soft reset.
 	*/
-	static void begin(uint8_t irq, uint8_t rst = 0xff);
+	static void begin(uint32_t irq, uint32_t rst = 0xff);
 	
 	/** 
 	Selects a specific DW1000 chip for communication. In case of a single DW1000 chip in use
@@ -56,7 +57,7 @@ public:
 	@param[in] ss The chip select line/pin that connects the to-be-selected chip with the
 	Arduino.
 	*/
-	static void select(uint8_t ss);
+	static void select(uint32_t ss);
 	
 	/** 
 	(Re-)selects a specific DW1000 chip for communication. In case of a single DW1000 chip in use
@@ -67,7 +68,7 @@ public:
 	@param[in] ss The chip select line/pin that connects the to-be-selected chip with the
 	Arduino.
 	*/
-	static void reselect(uint8_t ss);
+	static void reselect(uint32_t ss);
 	
 	/** 
 	Tells the driver library that no communication to a DW1000 will be required anymore.
@@ -144,7 +145,7 @@ public:
 	// TODO MAC and filters
 	
 	static void setEUI(char eui[]);
-	static void setEUI(byte eui[]);
+	static void setEUI(uint8_t eui[]);
 	
 	/* ##### General device configuration ######################################## */
 	/** 
@@ -156,7 +157,7 @@ public:
 
 	@param[in] val `true` to enable, `false` to disable receiver auto-reenable.
 	*/
-	static void setReceiverAutoReenable(boolean val);
+	static void setReceiverAutoReenable(uint8_t val);
 	
 	/** 
 	Specifies the interrupt polarity of the DW1000 chip. 
@@ -166,7 +167,7 @@ public:
 
 	@param[in] val `true` for active high interrupts, `false` for active low interrupts.
 	*/
-	static void setInterruptPolarity(boolean val);
+	static void setInterruptPolarity(uint8_t val);
 	
 	/** 
 	Specifies whether to suppress any frame check measures while sending or receiving messages.
@@ -179,7 +180,7 @@ public:
 
 	@param[in] val `true` to suppress frame check on sender and receiver side, `false` otherwise.
 	*/
-	static void suppressFrameCheck(boolean val);
+	static void suppressFrameCheck(uint8_t val);
 	
 	/** 
 	Specifies the data transmission rate of the DW1000 chip. One of the values
@@ -192,7 +193,7 @@ public:
 
 	@param[in] rate The data transmission rate, encoded by the above defined constants.
 	*/
-	static void setDataRate(byte rate);
+	static void setDataRate(uint8_t rate);
 	
 	/** 
 	Specifies the pulse repetition frequency (PRF) of data transmissions with the DW1000. Either
@@ -208,27 +209,27 @@ public:
 
 	@param[in] freq The PRF, encoded by the above defined constants.
 	*/
-	static void setPulseFrequency(byte freq);
-	static byte getPulseFrequency();
-	static void setPreambleLength(byte prealen);
-	static void setChannel(byte channel);
-	static void setPreambleCode(byte preacode);
-	static void useSmartPower(boolean smartPower);
+	static void setPulseFrequency(uint8_t freq);
+	static uint8_t getPulseFrequency();
+	static void setPreambleLength(uint8_t prealen);
+	static void setChannel(uint8_t channel);
+	static void setPreambleCode(uint8_t preacode);
+	static void useSmartPower(uint8_t smartPower);
 	
 	/* transmit and receive configuration. */
 	static DW1000Time   setDelay(const DW1000Time& delay);
-	static void         receivePermanently(boolean val);
-	static void         setData(byte data[], uint16_t n);
-	static void         setData(const String& data);
-	static void         getData(byte data[], uint16_t n);
-	static void         getData(String& data);
+	static void         receivePermanently(uint8_t val);
+	static void         setData(uint8_t data[], uint16_t n);
+	//mwm no string static void         setData(const String& data);
+	static void         getData(uint8_t data[], uint16_t n);
+	//mwm no string static void         getData(String& data);
 	static uint16_t     getDataLength();
 	static void         getTransmitTimestamp(DW1000Time& time);
 	static void         getReceiveTimestamp(DW1000Time& time);
 	static void         getSystemTimestamp(DW1000Time& time);
-	static void         getTransmitTimestamp(byte data[]);
-	static void         getReceiveTimestamp(byte data[]);
-	static void         getSystemTimestamp(byte data[]);
+	static void         getTransmitTimestamp(uint8_t data[]);
+	static void         getReceiveTimestamp(uint8_t data[]);
+	static void         getSystemTimestamp(uint8_t data[]);
 	
 	/* receive quality information. */
 	static float getReceivePower();
@@ -236,12 +237,12 @@ public:
 	static float getReceiveQuality();
 	
 	/* interrupt management. */
-	static void interruptOnSent(boolean val);
-	static void interruptOnReceived(boolean val);
-	static void interruptOnReceiveFailed(boolean val);
-	static void interruptOnReceiveTimeout(boolean val);
-	static void interruptOnReceiveTimestampAvailable(boolean val);
-	static void interruptOnAutomaticAcknowledgeTrigger(boolean val);
+	static void interruptOnSent(uint8_t val);
+	static void interruptOnReceived(uint8_t val);
+	static void interruptOnReceiveFailed(uint8_t val);
+	static void interruptOnReceiveTimeout(uint8_t val);
+	static void interruptOnReceiveTimestampAvailable(uint8_t val);
+	static void interruptOnAutomaticAcknowledgeTrigger(uint8_t val);
 	
 	/* callback handler management. */
 	static void attachErrorHandler(void (* handleError)(void)) {
@@ -306,92 +307,92 @@ public:
 
 	@param[in] mode The mode of operation, encoded by the above defined constants.
 	*/
-	static void enableMode(const byte mode[]);
+	static void enableMode(const uint8_t mode[]);
 	
 	// use RX/TX specific and general default settings
 	static void setDefaults();
 	
 	/* debug pretty print registers. */
-	static void getPrettyBytes(byte cmd, uint16_t offset, char msgBuffer[], uint16_t n);
-	static void getPrettyBytes(byte data[], char msgBuffer[], uint16_t n);
+	static void getPrettyBytes(uint8_t cmd, uint16_t offset, char msgBuffer[], uint16_t n);
+	static void getPrettyBytes(uint8_t data[], char msgBuffer[], uint16_t n);
 	
 	//convert from char to 4 bits (hexadecimal)
 	static uint8_t nibbleFromChar(char c);
-	static void convertToByte(char string[], byte* eui_byte);
+	static void convertToByte(char string[], uint8_t* eui_byte);
 	
 	// host-initiated reading of temperature and battery voltage
 	static void getTempAndVbat(float& temp, float& vbat);
 	
 	// transmission/reception bit rate
-	static constexpr byte TRX_RATE_110KBPS  = 0x00;
-	static constexpr byte TRX_RATE_850KBPS  = 0x01;
-	static constexpr byte TRX_RATE_6800KBPS = 0x02;
+	static constexpr uint8_t TRX_RATE_110KBPS  = 0x00;
+	static constexpr uint8_t TRX_RATE_850KBPS  = 0x01;
+	static constexpr uint8_t TRX_RATE_6800KBPS = 0x02;
 	
 	// transmission pulse frequency
 	// 0x00 is 4MHZ, but receiver in DW1000 does not support it (!??)
-	static constexpr byte TX_PULSE_FREQ_16MHZ = 0x01;
-	static constexpr byte TX_PULSE_FREQ_64MHZ = 0x02;
+	static constexpr uint8_t TX_PULSE_FREQ_16MHZ = 0x01;
+	static constexpr uint8_t TX_PULSE_FREQ_64MHZ = 0x02;
 	
 	// preamble length (PE + TXPSR bits)
-	static constexpr byte TX_PREAMBLE_LEN_64   = 0x01;
-	static constexpr byte TX_PREAMBLE_LEN_128  = 0x05;
-	static constexpr byte TX_PREAMBLE_LEN_256  = 0x09;
-	static constexpr byte TX_PREAMBLE_LEN_512  = 0x0D;
-	static constexpr byte TX_PREAMBLE_LEN_1024 = 0x02;
-	static constexpr byte TX_PREAMBLE_LEN_1536 = 0x06;
-	static constexpr byte TX_PREAMBLE_LEN_2048 = 0x0A;
-	static constexpr byte TX_PREAMBLE_LEN_4096 = 0x03;
+	static constexpr uint8_t TX_PREAMBLE_LEN_64   = 0x01;
+	static constexpr uint8_t TX_PREAMBLE_LEN_128  = 0x05;
+	static constexpr uint8_t TX_PREAMBLE_LEN_256  = 0x09;
+	static constexpr uint8_t TX_PREAMBLE_LEN_512  = 0x0D;
+	static constexpr uint8_t TX_PREAMBLE_LEN_1024 = 0x02;
+	static constexpr uint8_t TX_PREAMBLE_LEN_1536 = 0x06;
+	static constexpr uint8_t TX_PREAMBLE_LEN_2048 = 0x0A;
+	static constexpr uint8_t TX_PREAMBLE_LEN_4096 = 0x03;
 	
 	// PAC size. */
-	static constexpr byte PAC_SIZE_8  = 8;
-	static constexpr byte PAC_SIZE_16 = 16;
-	static constexpr byte PAC_SIZE_32 = 32;
-	static constexpr byte PAC_SIZE_64 = 64;
+	static constexpr uint8_t PAC_SIZE_8  = 8;
+	static constexpr uint8_t PAC_SIZE_16 = 16;
+	static constexpr uint8_t PAC_SIZE_32 = 32;
+	static constexpr uint8_t PAC_SIZE_64 = 64;
 	
 	/* channel of operation. */
-	static constexpr byte CHANNEL_1 = 1;
-	static constexpr byte CHANNEL_2 = 2;
-	static constexpr byte CHANNEL_3 = 3;
-	static constexpr byte CHANNEL_4 = 4;
-	static constexpr byte CHANNEL_5 = 5;
-	static constexpr byte CHANNEL_7 = 7;
+	static constexpr uint8_t CHANNEL_1 = 1;
+	static constexpr uint8_t CHANNEL_2 = 2;
+	static constexpr uint8_t CHANNEL_3 = 3;
+	static constexpr uint8_t CHANNEL_4 = 4;
+	static constexpr uint8_t CHANNEL_5 = 5;
+	static constexpr uint8_t CHANNEL_7 = 7;
 	
 	/* preamble codes. */
-	static constexpr byte PREAMBLE_CODE_16MHZ_1  = 1;
-	static constexpr byte PREAMBLE_CODE_16MHZ_2  = 2;
-	static constexpr byte PREAMBLE_CODE_16MHZ_3  = 3;
-	static constexpr byte PREAMBLE_CODE_16MHZ_4  = 4;
-	static constexpr byte PREAMBLE_CODE_16MHZ_5  = 5;
-	static constexpr byte PREAMBLE_CODE_16MHZ_6  = 6;
-	static constexpr byte PREAMBLE_CODE_16MHZ_7  = 7;
-	static constexpr byte PREAMBLE_CODE_16MHZ_8  = 8;
-	static constexpr byte PREAMBLE_CODE_64MHZ_9  = 9;
-	static constexpr byte PREAMBLE_CODE_64MHZ_10 = 10;
-	static constexpr byte PREAMBLE_CODE_64MHZ_11 = 11;
-	static constexpr byte PREAMBLE_CODE_64MHZ_12 = 12;
-	static constexpr byte PREAMBLE_CODE_64MHZ_17 = 17;
-	static constexpr byte PREAMBLE_CODE_64MHZ_18 = 18;
-	static constexpr byte PREAMBLE_CODE_64MHZ_19 = 19;
-	static constexpr byte PREAMBLE_CODE_64MHZ_20 = 20;
+	static constexpr uint8_t PREAMBLE_CODE_16MHZ_1  = 1;
+	static constexpr uint8_t PREAMBLE_CODE_16MHZ_2  = 2;
+	static constexpr uint8_t PREAMBLE_CODE_16MHZ_3  = 3;
+	static constexpr uint8_t PREAMBLE_CODE_16MHZ_4  = 4;
+	static constexpr uint8_t PREAMBLE_CODE_16MHZ_5  = 5;
+	static constexpr uint8_t PREAMBLE_CODE_16MHZ_6  = 6;
+	static constexpr uint8_t PREAMBLE_CODE_16MHZ_7  = 7;
+	static constexpr uint8_t PREAMBLE_CODE_16MHZ_8  = 8;
+	static constexpr uint8_t PREAMBLE_CODE_64MHZ_9  = 9;
+	static constexpr uint8_t PREAMBLE_CODE_64MHZ_10 = 10;
+	static constexpr uint8_t PREAMBLE_CODE_64MHZ_11 = 11;
+	static constexpr uint8_t PREAMBLE_CODE_64MHZ_12 = 12;
+	static constexpr uint8_t PREAMBLE_CODE_64MHZ_17 = 17;
+	static constexpr uint8_t PREAMBLE_CODE_64MHZ_18 = 18;
+	static constexpr uint8_t PREAMBLE_CODE_64MHZ_19 = 19;
+	static constexpr uint8_t PREAMBLE_CODE_64MHZ_20 = 20;
 	
 	/* frame length settings. */
-	static constexpr byte FRAME_LENGTH_NORMAL   = 0x00;
-	static constexpr byte FRAME_LENGTH_EXTENDED = 0x03;
+	static constexpr uint8_t FRAME_LENGTH_NORMAL   = 0x00;
+	static constexpr uint8_t FRAME_LENGTH_EXTENDED = 0x03;
 	
 	/* pre-defined modes of operation (3 bytes for data rate, pulse frequency and 
 	preamble length). */
-	static constexpr byte MODE_LONGDATA_RANGE_LOWPOWER[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_2048};
-	static constexpr byte MODE_SHORTDATA_FAST_LOWPOWER[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_128};
-	static constexpr byte MODE_LONGDATA_FAST_LOWPOWER[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_1024};
-	static constexpr byte MODE_SHORTDATA_FAST_ACCURACY[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_128};
-	static constexpr byte MODE_LONGDATA_FAST_ACCURACY[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_1024};
-	static constexpr byte MODE_LONGDATA_RANGE_ACCURACY[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_2048};
+	static constexpr uint8_t MODE_LONGDATA_RANGE_LOWPOWER[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_2048};
+	static constexpr uint8_t MODE_SHORTDATA_FAST_LOWPOWER[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_128};
+	static constexpr uint8_t MODE_LONGDATA_FAST_LOWPOWER[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_1024};
+	static constexpr uint8_t MODE_SHORTDATA_FAST_ACCURACY[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_128};
+	static constexpr uint8_t MODE_LONGDATA_FAST_ACCURACY[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_1024};
+	static constexpr uint8_t MODE_LONGDATA_RANGE_ACCURACY[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_2048};
 
 //private:
 	/* chip select, reset and interrupt pins. */
-	static uint8_t _ss;
-	static uint8_t _rst;
-	static uint8_t _irq;
+	static uint32_t _ss;
+	static uint32_t _rst;
+	static uint32_t _irq;
 	
 	/* callbacks. */
 	static void (* _handleError)(void);
@@ -402,34 +403,34 @@ public:
 	static void (* _handleReceiveTimestampAvailable)(void);
 	
 	/* register caches. */
-	static byte _syscfg[LEN_SYS_CFG];
-	static byte _sysctrl[LEN_SYS_CTRL];
-	static byte _sysstatus[LEN_SYS_STATUS];
-	static byte _txfctrl[LEN_TX_FCTRL];
-	static byte _sysmask[LEN_SYS_MASK];
-	static byte _chanctrl[LEN_CHAN_CTRL];
+	static uint8_t _syscfg[LEN_SYS_CFG];
+	static uint8_t _sysctrl[LEN_SYS_CTRL];
+	static uint8_t _sysstatus[LEN_SYS_STATUS];
+	static uint8_t _txfctrl[LEN_TX_FCTRL];
+	static uint8_t _sysmask[LEN_SYS_MASK];
+	static uint8_t _chanctrl[LEN_CHAN_CTRL];
 	
 	/* device status monitoring */
-	static byte _vmeas3v3;
-	static byte _tmeas23C;
+	static uint8_t _vmeas3v3;
+	static uint8_t _tmeas23C;
 
 	/* PAN and short address. */
-	static byte _networkAndAddress[LEN_PANADR];
+	static uint8_t _networkAndAddress[LEN_PANADR];
 	
 	/* internal helper that guide tuning the chip. */
-	static boolean    _smartPower;
-	static byte       _extendedFrameLength;
-	static byte       _preambleCode;
-	static byte       _channel;
-	static byte       _preambleLength;
-	static byte       _pulseFrequency;
-	static byte       _dataRate;
-	static byte       _pacSize;
+	static bool    _smartPower;
+	static uint8_t       _extendedFrameLength;
+	static uint8_t       _preambleCode;
+	static uint8_t       _channel;
+	static uint8_t       _preambleLength;
+	static uint8_t       _pulseFrequency;
+	static uint8_t       _dataRate;
+	static uint8_t       _pacSize;
 	static DW1000Time _antennaDelay;
 	
 	/* internal helper to remember how to properly act. */
-	static boolean _permanentReceive;
-	static boolean _frameCheck;
+	static bool _permanentReceive;
+	static bool _frameCheck;
 	
 	// whether RX or TX is active
 	static uint8_t _deviceMode;
@@ -439,33 +440,33 @@ public:
 	
 	/* Allow MAC frame filtering . */
 	// TODO auto-acknowledge
-	static void setFrameFilter(boolean val);
-	static void setFrameFilterBehaveCoordinator(boolean val);
-	static void setFrameFilterAllowBeacon(boolean val);
+	static void setFrameFilter(uint8_t val);
+	static void setFrameFilterBehaveCoordinator(uint8_t val);
+	static void setFrameFilterAllowBeacon(uint8_t val);
 	//data type is used in the FC_1 0x41
-	static void setFrameFilterAllowData(boolean val);
-	static void setFrameFilterAllowAcknowledgement(boolean val);
-	static void setFrameFilterAllowMAC(boolean val);
+	static void setFrameFilterAllowData(uint8_t val);
+	static void setFrameFilterAllowAcknowledgement(uint8_t val);
+	static void setFrameFilterAllowMAC(uint8_t val);
 	//Reserved is used for the Blink message
-	static void setFrameFilterAllowReserved(boolean val);
+	static void setFrameFilterAllowReserved(uint8_t val);
 	
 	// note: not sure if going to be implemented for now
-	static void setDoubleBuffering(boolean val);
+	static void setDoubleBuffering(uint8_t val);
 	// TODO is implemented, but needs testing
-	static void useExtendedFrameLength(boolean val);
+	static void useExtendedFrameLength(uint8_t val);
 	// TODO is implemented, but needs testing
-	static void waitForResponse(boolean val);
+	static void waitForResponse(uint8_t val);
 	
 	/* tuning according to mode. */
 	static void tune();
 	
 	/* device status flags */
-	static boolean isReceiveTimestampAvailable();
-	static boolean isTransmitDone();
-	static boolean isReceiveDone();
-	static boolean isReceiveFailed();
-	static boolean isReceiveTimeout();
-	static boolean isClockProblem();
+	static uint8_t isReceiveTimestampAvailable();
+	static uint8_t isTransmitDone();
+	static uint8_t isReceiveDone();
+	static uint8_t isReceiveFailed();
+	static uint8_t isReceiveTimeout();
+	static uint8_t isClockProblem();
 	
 	/* interrupt state handling */
 	static void clearInterrupts();
@@ -488,7 +489,7 @@ public:
 	static void writeTransmitFrameControlRegister();
 	
 	/* clock management. */
-	static void enableClock(byte clock);
+	static void enableClock(uint8_t clock);
 	
 	/* LDE micro-code management. */
 	static void manageLDE();
@@ -497,47 +498,48 @@ public:
 	static void correctTimestamp(DW1000Time& timestamp);
 	
 	/* reading and writing bytes from and to DW1000 module. */
-	static void readBytes(byte cmd, uint16_t offset, byte data[], uint16_t n);
-	static void readBytesOTP(uint16_t address, byte data[]);
-	static void writeByte(byte cmd, uint16_t offset, byte data);
-	static void writeBytes(byte cmd, uint16_t offset, byte data[], uint16_t n);
+	static void readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16_t n);
+	static void readBytesOTP(uint16_t address, uint8_t data[]);
+	static void writeByte(uint8_t cmd, uint16_t offset, uint8_t data);
+	static void writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16_t n);
 	
 	/* writing numeric values to bytes. */
-	static void writeValueToBytes(byte data[], int32_t val, uint16_t n);
+	static void writeValueToBytes(uint8_t data[], int32_t val, uint16_t n);
 	
 	/* internal helper for bit operations on multi-bytes. */
-	static boolean getBit(byte data[], uint16_t n, uint16_t bit);
-	static void    setBit(byte data[], uint16_t n, uint16_t bit, boolean val);
+	static uint8_t getBit(uint8_t data[], uint16_t n, uint16_t bit);
+	static void    setBit(uint8_t data[], uint16_t n, uint16_t bit, uint8_t val);
 	
 	/* Register is 6 bit, 7 = write, 6 = sub-adressing, 5-0 = register value
 	 * Total header with sub-adressing can be 15 bit. */
-	static const byte WRITE      = 0x80; // regular write
-	static const byte WRITE_SUB  = 0xC0; // write with sub address
-	static const byte READ       = 0x00; // regular read
-	static const byte READ_SUB   = 0x40; // read with sub address
-	static const byte RW_SUB_EXT = 0x80; // R/W with sub address extension
+	static const uint8_t WRITE      = 0x80; // regular write
+	static const uint8_t WRITE_SUB  = 0xC0; // write with sub address
+	static const uint8_t READ       = 0x00; // regular read
+	static const uint8_t READ_SUB   = 0x40; // read with sub address
+	static const uint8_t RW_SUB_EXT = 0x80; // R/W with sub address extension
 	
 	/* clocks available. */
-	static const byte AUTO_CLOCK = 0x00;
-	static const byte XTI_CLOCK  = 0x01;
-	static const byte PLL_CLOCK  = 0x02;
+	static const uint8_t AUTO_CLOCK = 0x00;
+	static const uint8_t XTI_CLOCK  = 0x01;
+	static const uint8_t PLL_CLOCK  = 0x02;
 	
 	/* SPI configs. */
-	static const SPISettings _fastSPI;
-	static const SPISettings _slowSPI;
-	static const SPISettings* _currentSPI;
+//	static const SPISettings _fastSPI;
+//	static const SPISettings _slowSPI;
+//	static const SPISettings* _currentSPI;
+	static device::SPI _spi;
 	
 	/* range bias tables (500/900 MHz band, 16/64 MHz PRF), -61 to -95 dBm. */
-	static const byte BIAS_500_16_ZERO = 10;
-	static const byte BIAS_500_64_ZERO = 8;
-	static const byte BIAS_900_16_ZERO = 7;
-	static const byte BIAS_900_64_ZERO = 7;
+	static const uint8_t BIAS_500_16_ZERO = 10;
+	static const uint8_t BIAS_500_64_ZERO = 8;
+	static const uint8_t BIAS_900_16_ZERO = 7;
+	static const uint8_t BIAS_900_64_ZERO = 7;
 	
 	// range bias tables (500 MHz in [mm] and 900 MHz in [2mm] - to fit into bytes)
-	static constexpr byte BIAS_500_16[] = {198, 187, 179, 163, 143, 127, 109, 84, 59, 31, 0, 36, 65, 84, 97, 106, 110, 112};
-	static constexpr byte BIAS_500_64[] = {110, 105, 100, 93, 82, 69, 51, 27, 0, 21, 35, 42, 49, 62, 71, 76, 81, 86};
-	static constexpr byte BIAS_900_16[] = {137, 122, 105, 88, 69, 47, 25, 0, 21, 48, 79, 105, 127, 147, 160, 169, 178, 197};
-	static constexpr byte BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24, 45, 63, 76, 87, 98, 116, 122, 132, 142};
+	static constexpr uint8_t BIAS_500_16[] = {198, 187, 179, 163, 143, 127, 109, 84, 59, 31, 0, 36, 65, 84, 97, 106, 110, 112};
+	static constexpr uint8_t BIAS_500_64[] = {110, 105, 100, 93, 82, 69, 51, 27, 0, 21, 35, 42, 49, 62, 71, 76, 81, 86};
+	static constexpr uint8_t BIAS_900_16[] = {137, 122, 105, 88, 69, 47, 25, 0, 21, 48, 79, 105, 127, 147, 160, 169, 178, 197};
+	static constexpr uint8_t BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24, 45, 63, 76, 87, 98, 116, 122, 132, 142};
 	
 };
 

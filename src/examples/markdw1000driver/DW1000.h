@@ -157,7 +157,7 @@ public:
 
 	@param[in] val `true` to enable, `false` to disable receiver auto-reenable.
 	*/
-	static void setReceiverAutoReenable(uint8_t val);
+	static void setReceiverAutoReenable(bool val);
 	
 	/** 
 	Specifies the interrupt polarity of the DW1000 chip. 
@@ -167,7 +167,7 @@ public:
 
 	@param[in] val `true` for active high interrupts, `false` for active low interrupts.
 	*/
-	static void setInterruptPolarity(uint8_t val);
+	static void setInterruptPolarity(bool val);
 	
 	/** 
 	Specifies whether to suppress any frame check measures while sending or receiving messages.
@@ -180,7 +180,7 @@ public:
 
 	@param[in] val `true` to suppress frame check on sender and receiver side, `false` otherwise.
 	*/
-	static void suppressFrameCheck(uint8_t val);
+	static void suppressFrameCheck(bool val);
 	
 	/** 
 	Specifies the data transmission rate of the DW1000 chip. One of the values
@@ -214,11 +214,11 @@ public:
 	static void setPreambleLength(uint8_t prealen);
 	static void setChannel(uint8_t channel);
 	static void setPreambleCode(uint8_t preacode);
-	static void useSmartPower(uint8_t smartPower);
+	static void useSmartPower(bool smartPower);
 	
 	/* transmit and receive configuration. */
 	static DW1000Time   setDelay(const DW1000Time& delay);
-	static void         receivePermanently(uint8_t val);
+	static void         receivePermanently(bool val);
 	static void         setData(uint8_t data[], uint16_t n);
 	//mwm no string static void         setData(const String& data);
 	static void         getData(uint8_t data[], uint16_t n);
@@ -237,12 +237,12 @@ public:
 	static float getReceiveQuality();
 	
 	/* interrupt management. */
-	static void interruptOnSent(uint8_t val);
-	static void interruptOnReceived(uint8_t val);
-	static void interruptOnReceiveFailed(uint8_t val);
-	static void interruptOnReceiveTimeout(uint8_t val);
-	static void interruptOnReceiveTimestampAvailable(uint8_t val);
-	static void interruptOnAutomaticAcknowledgeTrigger(uint8_t val);
+	static void interruptOnSent(bool val);
+	static void interruptOnReceived(bool val);
+	static void interruptOnReceiveFailed(bool val);
+	static void interruptOnReceiveTimeout(bool val);
+	static void interruptOnReceiveTimestampAvailable(bool val);
+	static void interruptOnAutomaticAcknowledgeTrigger(bool val);
 	
 	/* callback handler management. */
 	static void attachErrorHandler(void (* handleError)(void)) {
@@ -440,33 +440,33 @@ public:
 	
 	/* Allow MAC frame filtering . */
 	// TODO auto-acknowledge
-	static void setFrameFilter(uint8_t val);
-	static void setFrameFilterBehaveCoordinator(uint8_t val);
-	static void setFrameFilterAllowBeacon(uint8_t val);
+	static void setFrameFilter(bool val);
+	static void setFrameFilterBehaveCoordinator(bool val);
+	static void setFrameFilterAllowBeacon(bool val);
 	//data type is used in the FC_1 0x41
-	static void setFrameFilterAllowData(uint8_t val);
-	static void setFrameFilterAllowAcknowledgement(uint8_t val);
-	static void setFrameFilterAllowMAC(uint8_t val);
+	static void setFrameFilterAllowData(bool val);
+	static void setFrameFilterAllowAcknowledgement(bool val);
+	static void setFrameFilterAllowMAC(bool val);
 	//Reserved is used for the Blink message
-	static void setFrameFilterAllowReserved(uint8_t val);
+	static void setFrameFilterAllowReserved(bool val);
 	
 	// note: not sure if going to be implemented for now
-	static void setDoubleBuffering(uint8_t val);
+	static void setDoubleBuffering(bool val);
 	// TODO is implemented, but needs testing
-	static void useExtendedFrameLength(uint8_t val);
+	static void useExtendedFrameLength(bool val);
 	// TODO is implemented, but needs testing
-	static void waitForResponse(uint8_t val);
+	static void waitForResponse(bool val);
 	
 	/* tuning according to mode. */
 	static void tune();
 	
 	/* device status flags */
-	static uint8_t isReceiveTimestampAvailable();
-	static uint8_t isTransmitDone();
-	static uint8_t isReceiveDone();
-	static uint8_t isReceiveFailed();
-	static uint8_t isReceiveTimeout();
-	static uint8_t isClockProblem();
+	static bool isReceiveTimestampAvailable();
+	static bool isTransmitDone();
+	static bool isReceiveDone();
+	static bool isReceiveFailed();
+	static bool isReceiveTimeout();
+	static bool isClockProblem();
 	
 	/* interrupt state handling */
 	static void clearInterrupts();
@@ -507,8 +507,8 @@ public:
 	static void writeValueToBytes(uint8_t data[], int32_t val, uint16_t n);
 	
 	/* internal helper for bit operations on multi-bytes. */
-	static uint8_t getBit(uint8_t data[], uint16_t n, uint16_t bit);
-	static void    setBit(uint8_t data[], uint16_t n, uint16_t bit, uint8_t val);
+	static bool getBit(uint8_t data[], uint16_t n, uint16_t bit);
+	static void setBit(uint8_t data[], uint16_t n, uint16_t bit, bool val);
 	
 	/* Register is 6 bit, 7 = write, 6 = sub-adressing, 5-0 = register value
 	 * Total header with sub-adressing can be 15 bit. */

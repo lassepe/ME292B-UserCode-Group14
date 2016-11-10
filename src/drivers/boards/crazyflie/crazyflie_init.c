@@ -223,7 +223,7 @@ __EXPORT int nsh_archinitialize(void)
 	led_off(LED_TX);
 	led_off(LED_RX);
 
-	spi1 = px4_spibus_initialize(1);
+	spi1 = up_spiinitialize(1);
 	if (!spi1) {
 		message("[boot] FAILED to initialize SPI port 1\r\n");
 		up_ledon(LED_RED);

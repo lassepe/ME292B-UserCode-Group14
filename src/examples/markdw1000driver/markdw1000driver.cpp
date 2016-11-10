@@ -59,9 +59,15 @@ extern "C" __EXPORT int mtest_main(int argc, char *argv[]);
 
 int mtest_main(int argc, char *argv[])
 {
-    printf("Starting app\n");
-    printf("Creating object\n");
-//    DW1000Class dw1000 = DW1000Class(0, (spi_dev_e) 0);//mwm todo: arguments??h
+	printf("DW1000.begin();\n");
+	usleep(500000);
     DW1000.begin();
+    printf("DW1000.select(0);\n");
+	usleep(500000);
+    DW1000.select(0);
+//    printf("uint8_t data[4] = \n");
+//    uint8_t data[4] = "abc";
+//    printf("DW1000.setData(data,4);\n");
+//    DW1000.setData(data,4);
     return OK;
 }

@@ -134,8 +134,6 @@ public:
 
 	@param[in] val An arbitrary numeric network identifier.
 	*/
-	
-	
 	void setNetworkId(uint16_t val);
 	
 	/** 

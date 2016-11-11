@@ -145,7 +145,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 	/* SPI select is active low, so write !selected to select the device */
 
 	switch (devid) {
-	case PX4_SPIDEV_EXPANSION_DW1000:
+	case PX4_SPIDEV_EXPANSION_DW1000_DEVID:
 		/* Making sure the other peripherals are not selected */
 		px4_arch_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, !selected);
 		break;
@@ -223,7 +223,7 @@ __EXPORT int nsh_archinitialize(void)
 	led_off(LED_TX);
 	led_off(LED_RX);
 
-	spi1 = up_spiinitialize(1);
+	spi1 = up_spiinitialize(PX4_SPIDEV_EXPANSION_DW1000_PORT);
 	if (!spi1) {
 		message("[boot] FAILED to initialize SPI port 1\r\n");
 		up_ledon(LED_RED);
@@ -234,7 +234,7 @@ __EXPORT int nsh_archinitialize(void)
 	SPI_SETFREQUENCY(spi1, 10000000);
 	SPI_SETBITS(spi1, 8);
 	SPI_SETMODE(spi1, SPIDEV_MODE3);
-	SPI_SELECT(spi1, PX4_SPIDEV_EXPANSION_DW1000, false);
+	SPI_SELECT(spi1, PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
 	up_udelay(20);
 
 	result = board_i2c_initialize();

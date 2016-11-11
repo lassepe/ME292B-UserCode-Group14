@@ -43,8 +43,9 @@
 #include <px4_posix.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <poll.h>
+#include <stdlib.h>
 #include <string.h>
+#include <poll.h>
 
 #include <uORB/uORB.h>
 #include <uORB/topics/sensor_combined.h>
@@ -58,6 +59,8 @@ int basicConnectivityTest(void);
 int basicSender(void);
 void handleSent();
 void transmitter();
+int markTestTimestampTest(void);
+void usage();
 
 int basicConnectivityTest(void){
 	// initialize the driver
@@ -70,31 +73,28 @@ int basicConnectivityTest(void){
 	DW1000.setNetworkId(10);
 	DW1000.commitConfiguration();
 	printf("Committed configuration ... \n");
-	// wait a bit
-	usleep(1000*1000);
+	usleep(1000);
 
-	for (unsigned i = 0; i < 2; i++) {
-		// DEBUG chip info and registers pretty printed
-		char msg[128];
-		DW1000.getPrintableDeviceIdentifier(msg);
-		printf("Device ID: ");
-		printf(msg);
-		printf("\n");
-		DW1000.getPrintableExtendedUniqueIdentifier(msg);
-		printf("Unique ID: ");
-		printf(msg);
-		printf("\n");
-		DW1000.getPrintableNetworkIdAndShortAddress(msg);
-		printf("Network ID & Device Address: ");
-		printf(msg);
-		printf("\n");
-		DW1000.getPrintableDeviceMode(msg);
-		printf("Device mode: ");
-		printf(msg);
-		printf("\n");
-		// wait a bit
-        usleep(1000*1000);
-	}
+	printf("====================================\n");
+    // DEBUG chip info and registers pretty printed
+    char msg[128];
+    DW1000.getPrintableDeviceIdentifier(msg);
+    printf("Device ID: ");
+    printf(msg);
+    printf("\n");
+    DW1000.getPrintableExtendedUniqueIdentifier(msg);
+    printf("Unique ID: ");
+    printf(msg);
+    printf("\n");
+    DW1000.getPrintableNetworkIdAndShortAddress(msg);
+    printf("Network ID & Device Address: ");
+    printf(msg);
+    printf("\n");
+    DW1000.getPrintableDeviceMode(msg);
+    printf("Device mode: ");
+    printf(msg);
+    printf("\n");
+	printf("====================================\n");
 	return 0;
 }
 
@@ -145,27 +145,6 @@ int basicSender(void){
 	DW1000.commitConfiguration();
 	printf("Committed configuration ... \n");
 
-	char msg[128];
-	DW1000.getPrintableDeviceIdentifier(msg);
-	printf("Device ID: ");
-	printf("\n");
-	printf(msg);
-	printf("\n");
-	DW1000.getPrintableExtendedUniqueIdentifier(msg);
-	printf("Unique ID: ");
-	printf("\n");
-	printf(msg);
-	printf("\n");
-	DW1000.getPrintableNetworkIdAndShortAddress(msg);
-	printf("Network ID & Device Address: ");
-	printf("\n");
-	printf(msg);
-	printf("\n");
-	DW1000.getPrintableDeviceMode(msg);
-	printf("Device mode: ");
-	printf("\n");
-	printf(msg);
-	printf("\n");
 	// attach callback for (successfully) sent messages
 	DW1000.attachSentHandler(handleSent);
 
@@ -204,7 +183,53 @@ int basicSender(void){
 	return 0;
 }
 
+int markTestTimestampTest(void){
+	printf("DW1000 sender test\n");
+	// initialize the driver
+	DW1000.begin();
+	DW1000.select(0);
+	printf("DW1000 initialized ... \n");
+	// general configuration
+	DW1000.newConfiguration();
+	DW1000.setDeviceAddress(5);
+	DW1000.setNetworkId(10);
+	DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_LOWPOWER);
+	DW1000.commitConfiguration();
+	printf("Committed configuration ... \n");
+
+	printf("Starting loop\n");
+    usleep(10000);
+	for (unsigned i = 0; i < 10; i++) {
+		DW1000Time t;
+		DW1000.getSystemTimestamp(t);
+		printf("i=%d, t = %lfus\n", i, double(t.getAsMicroSeconds()));
+		usleep(100*1000);
+	}
+	return 0;
+}
+
+void usage(){
+		printf("Need at least one argument:\n");
+		printf("\tc -> basic connectivity test\n");
+		printf("\ts -> basic sender\n");
+		printf("\tt -> Timing test\n");
+}
 
 int mtest_main(int argc, char *argv[]) {
-	return basicSender();
+	if(argc <= 1){
+		usage();
+		return 0;
+	}
+	if(!strcmp(argv[1], "t")){
+        return markTestTimestampTest();
+	}
+	if(!strcmp(argv[1], "c")){
+        return basicConnectivityTest();
+	}
+	if(!strcmp(argv[1], "s")){
+        return basicSender();
+	}
+
+	usage();
+	return -1;
 }

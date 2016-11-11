@@ -80,7 +80,7 @@ uint8_t       DW1000Class::_preambleLength      = TX_PREAMBLE_LEN_128;
 uint8_t       DW1000Class::_preambleCode        = PREAMBLE_CODE_16MHZ_4;
 uint8_t       DW1000Class::_channel             = CHANNEL_5;
 DW1000Time DW1000Class::_antennaDelay;
-bool    DW1000Class::_smartPower          = false;
+bool       DW1000Class::_smartPower          = false;
 
 bool    DW1000Class::_frameCheck          = true;
 bool    DW1000Class::_permanentReceive    = false;
@@ -126,7 +126,13 @@ const uint8_t DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24
  * ######################################################################### */
 
 DW1000SPI::DW1000SPI(int bus, spi_dev_e device)
-    : SPI("DW1000SPI", DW1000_SPI_DEVICE_PATH, bus, device, SPIDEV_MODE3, SLOW_SPI_FREQ, GPIO_EXPANSION_LPSDECK_IRQ)//mwm: settings?
+//    : SPI("DW1000SPI", DW1000_SPI_DEVICE_PATH, bus, device, SPIDEV_MODE3, SLOW_SPI_FREQ, GPIO_EXPANSION_LPSDECK_IRQ)//mwm: settings?
+    : SPI("DW1000SPI",
+    	  DW1000_SPI_DEVICE_PATH,
+		  bus,
+		  device,
+		  SPIDEV_MODE0,
+		  SLOW_SPI_FREQ)//mwmspi removed IRQ pin here.
 {
 
 }
@@ -153,6 +159,9 @@ int DW1000SPI::sendBytes(uint8_t *data, unsigned len){
 int DW1000SPI::readBytes(uint8_t *data, unsigned len){
 	return transfer(NULL, data, len);
 }
+
+
+////////////////////////////////////////////////////////
 
 void DW1000Class::select(uint8_t ss) {
 	reselect(ss);
@@ -192,10 +201,7 @@ void DW1000Class::select(uint8_t ss) {
 	_tmeas23C = buf_otp[0];
 }
 
-//MWM set chip select to high.
 void DW1000Class::reselect(uint8_t ss) {
-//    stm32_configgpio(GPIO_EXPANSION_LPSDECK_CS); //pinMode(_ss, OUTPUT);
-	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);// digitalWrite(_ss, HIGH);
 }
 
 void DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
@@ -205,6 +211,7 @@ void DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	// start SPI
 	//SPI.begin();
 	dw1000spi.init();
+	dw1000spi.setFrequencySlow();
 	//------------------------------------------//
 #ifndef ESP8266
 	//mwm: this is to prevent conflicts, see here: https://www.arduino.cc/en/Reference/SPIusingInterrupt
@@ -212,8 +219,7 @@ void DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 #endif
 	// pin and basic member setup
 	_deviceMode = IDLE_MODE;
-	// attach interrupt
-	// TODO throw error if pin is not a interrupt pin
+	// attach interrupt // TODO throw error if pin is not a interrupt pin
 	//mwmspi attachInterrupt(digitalPinToInterrupt(_irq), DW1000Class::handleInterrupt, RISING); // todo interrupt for ESP8266
 }
 
@@ -1598,13 +1604,9 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
 			headerLen += 2;
 		}
 	}
-	//mwmspi SPI.beginTransaction(*_currentSPI);
-	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);//digitalWrite(_ss, LOW);
 	dw1000spi.sendBytes(header, headerLen);
 	dw1000spi.readBytes(data, n);
 	usleep(5);//delayMicroseconds(5);
-	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);//digitalWrite(_ss, HIGH);
-	//mwmspi SPI.endTransaction();
 }
 
 // always 4 bytes
@@ -1665,13 +1667,9 @@ void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint1
 			headerLen += 2;
 		}
 	}
-	//mwmspi SPI.beginTransaction(*_currentSPI);
-	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);//digitalWrite(_ss, LOW);
 	dw1000spi.sendBytes(header, headerLen);
 	dw1000spi.readBytes(data, data_size);
 	usleep(5);//delayMicroseconds(5);
-	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);// digitalWrite(_ss, HIGH);
-	//mwmspi SPI.endTransaction();
 }
 
 

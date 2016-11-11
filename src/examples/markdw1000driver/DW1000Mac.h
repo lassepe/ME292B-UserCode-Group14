@@ -1,4 +1,3 @@
-#if 0
 /*
  * Copyright (c) 2015 by Leopold Sayous <leosayous@gmail.com> and Thomas Trojer <thomas@trojer.net>
  * Decawave DW1000 library for arduino.
@@ -90,4 +89,3 @@ private:
 #endif
 
 
-#endif

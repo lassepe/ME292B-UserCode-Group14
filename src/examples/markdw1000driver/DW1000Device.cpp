@@ -122,31 +122,26 @@ float DW1000Device::getFPPower() { return float(_FPPower)/100.0f; }
 
 float DW1000Device::getQuality() { return float(_quality)/100.0f; }
 
+int32_t DW1000Device::getTimeMillis(){
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (ts.tv_sec * 1000 + ts.tv_nsec/1000000);
+}
 
 void DW1000Device::randomShortAddress() {
 	//mwm fix: _shortAddress[0] = random(0, 256);
 	//mwm fix: _shortAddress[1] = random(0, 256);
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    _activity = (ts.tv_sec * 1000 + ts.tv_nsec/1000000);
-    		//approximation of random:
-	_shortAddress[0] = (ts.tv_nsec/1000)%256;
-	_shortAddress[0] = (ts.tv_nsec/1000+100)%256;
+	_shortAddress[0] = rand()%256;
+	_shortAddress[1] = rand()%256;
 }
 
 void DW1000Device::noteActivity() {
-	//mwm todo: nicer time
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    _activity = (ts.tv_sec * 1000 + ts.tv_nsec/1000000);
+    _activity = getTimeMillis();
 }
 
 
 bool DW1000Device::isInactive() {
-	//mwm todo: nicer time
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-	int32_t currMillis = (ts.tv_sec * 1000 + ts.tv_nsec/1000000);
+	int32_t currMillis = getTimeMillis();
 	//One second of inactivity
 	if(currMillis -_activity > INACTIVITY_TIME) {
 		_activity = currMillis;

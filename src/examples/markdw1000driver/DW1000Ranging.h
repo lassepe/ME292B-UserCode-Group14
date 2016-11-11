@@ -1,4 +1,3 @@
-#if 0
 /*
  * Copyright (c) 2015 by Thomas Trojer <thomas@trojer.net> and Leopold Sayous <leosayous@gmail.com>
  * Decawave DW1000 library for arduino.
@@ -26,6 +25,8 @@
  * - maybe other object structure
  * - use enums instead of preprocessor constants
  */
+
+#include <systemlib/visibility.h>
 
 #include "DW1000.h"
 #include "DW1000Time.h"
@@ -69,7 +70,7 @@
 #endif
 
 
-class DW1000RangingClass {
+class __EXPORT DW1000RangingClass {
 public:
 	//variables
 	// data buffer
@@ -210,4 +211,3 @@ private:
 
 extern DW1000RangingClass DW1000Ranging;
 
-#endif

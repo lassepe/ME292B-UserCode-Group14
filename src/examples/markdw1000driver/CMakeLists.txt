@@ -39,8 +39,8 @@ px4_add_module(
 		DW1000.cpp
 		DW1000Device.cpp
 		DW1000Time.cpp
-		#DW1000Mac.cpp
-		#DW1000Ranging.cpp
+		DW1000Mac.cpp
+		DW1000Ranging.cpp
 	DEPENDS
 		platforms__common
 	)

@@ -125,9 +125,7 @@ void DW1000Class::select(uint32_t ss) {//CF: dwConfigure
 	// mwm CF has no ss? reselect(ss);//mwm missing on CF
 	// try locking clock at PLL speed (should be done already,
 	// but just to be sure)
-	printf("begin\n");usleep(100000);
 	enableClock(AUTO_CLOCK);
-	printf("s1\n");usleep(100000);
 	usleep(5000);// delay(5);
 	// reset chip (either soft or hard)
 
@@ -138,22 +136,16 @@ void DW1000Class::select(uint32_t ss) {//CF: dwConfigure
 		pinMode(_rst, INPUT);
 	}
 	*/
-	printf("reset\n");usleep(100000);
 	reset();
 	// default network and node id
-	printf("write net address\n");usleep(100000);
 	writeValueToBytes(_networkAndAddress, 0xFF, LEN_PANADR);
-	printf("write net address 2\n");usleep(100000);
 	writeNetworkIdAndDeviceAddress();
 	// default system configuration
-	printf("memset\n");usleep(100000);
 	memset(_syscfg, 0, LEN_SYS_CFG);
 	setDoubleBuffering(false);
 	setInterruptPolarity(true);
-	printf("write config register\n");usleep(100000);
 	writeSystemConfigurationRegister();
 	// default interrupt mask, i.e. no interrupts
-	printf("clear interrupts\n");usleep(100000);
 	clearInterrupts();
 	writeSystemEventMaskRegister();
 	// load LDE micro-code
@@ -171,7 +163,6 @@ void DW1000Class::select(uint32_t ss) {//CF: dwConfigure
 	_vmeas3v3 = buf_otp[0];
 	readBytesOTP(0x009, buf_otp); // the stored 23C reading
 	_tmeas23C = buf_otp[0];
-	printf("2\n");usleep(100000);
 }
 
 /* // mwm CF has no ss?
@@ -234,7 +225,6 @@ void DW1000Class::enableClock(uint8_t clock) {
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
 	readBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 	if(clock == AUTO_CLOCK) {
-        printf("set freq\n"); usleep(100000);
         set_frequency(FAST_SPI_FREQ);
 		pmscctrl0[0] = AUTO_CLOCK;
 		pmscctrl0[1] &= 0xFE;
@@ -249,9 +239,7 @@ void DW1000Class::enableClock(uint8_t clock) {
 	} else {
 		// TODO deliver proper warning
 	}
-    printf("write bytes 1\n"); usleep(100000);
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, 1);
-    printf("write bytes 2\n"); usleep(100000);
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 }
 
@@ -1592,9 +1580,7 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
 	//mwm: this has to be wrong. Looks like the writebytes part???
 	//mwmspi SPI.beginTransaction(*_currentSPI);
 	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);//digitalWrite(_ss, LOW);
-	printf("transfer write header\n"); usleep(100000);
 	transfer(header, NULL, headerLen);// send header
-	printf("transfer read data\n"); usleep(100000);
 	transfer(NULL, data, n);// read values
 	/*
 	for(i = 0; i < headerLen; i++) {

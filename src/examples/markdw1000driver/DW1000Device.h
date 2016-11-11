@@ -34,7 +34,7 @@ class DW1000Mac;
 
 class DW1000Device;
 
-class DW1000Device {
+class __EXPORT DW1000Device {
 public:
 	//Constructor and destructor
 	DW1000Device();
@@ -89,6 +89,7 @@ public:
 	void    noteActivity();
 	bool isInactive();
 
+	static int32_t getTimeMillis();
 
 private:
 	//device ID

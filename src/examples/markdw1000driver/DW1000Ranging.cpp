@@ -1,4 +1,3 @@
-#if 0 //mwm
 /*
  * Copyright (c) 2015 by Thomas Trojer <thomas@trojer.net> and Leopold Sayous <leosayous@gmail.com>
  * Decawave DW1000 library for arduino.
@@ -36,9 +35,9 @@ DW1000RangingClass DW1000Ranging;
 
 //other devices we are going to communicate with which are on our network:
 DW1000Device DW1000RangingClass::_networkDevices[MAX_DEVICES];
-uint8_t         DW1000RangingClass::_currentAddress[8];
-uint8_t         DW1000RangingClass::_currentShortAddress[2];
-uint8_t         DW1000RangingClass::_lastSentToShortAddress[2];
+uint8_t      DW1000RangingClass::_currentAddress[8];
+uint8_t      DW1000RangingClass::_currentShortAddress[2];
+uint8_t      DW1000RangingClass::_lastSentToShortAddress[2];
 uint8_t      DW1000RangingClass::_networkDevicesNumber = 0; // TODO short, 8bit?
 int16_t      DW1000RangingClass::_lastDistantDevice    = 0; // TODO short, 8bit?
 DW1000Mac    DW1000RangingClass::_globalMac;
@@ -101,7 +100,7 @@ void DW1000RangingClass::initCommunication(uint8_t myRST, uint8_t mySS, uint8_t 
 	_timerDelay       = DEFAULT_TIMER_DELAY;
 	
 	
-	DW1000.begin(myIRQ, myRST);
+	DW1000.begin();
 	DW1000.select(mySS);
 }
 
@@ -126,37 +125,41 @@ void DW1000RangingClass::generalStart() {
 	
 	if(DEBUG) {
 		// DEBUG monitoring
-		Serial.println("DW1000-arduino");
+		printf("DW1000-arduino\n");
 		// initialize the driver
 		
 		
-		Serial.println("configuration..");
+		printf("configuration..\n");
 		// DEBUG chip info and registers pretty printed
 		char msg[90];
 		DW1000.getPrintableDeviceIdentifier(msg);
-		Serial.print("Device ID: ");
-		Serial.println(msg);
+		printf("Device ID: ");
+		printf(msg);
+		printf("\n");
 		DW1000.getPrintableExtendedUniqueIdentifier(msg);
-		Serial.print("Unique ID: ");
-		Serial.print(msg);
+		printf("Unique ID: ");
+		printf(msg);
 		char string[6];
 		sprintf(string, "%02X:%02X", _currentShortAddress[0], _currentShortAddress[1]);
-		Serial.print(" short: ");
-		Serial.println(string);
+		printf(" short: ");
+		printf(string);
+		printf("\n");
 		
 		DW1000.getPrintableNetworkIdAndShortAddress(msg);
-		Serial.print("Network ID & Device Address: ");
-		Serial.println(msg);
+		printf("Network ID & Device Address: ");
+		printf(msg);
+		printf("\n");
 		DW1000.getPrintableDeviceMode(msg);
-		Serial.print("Device mode: ");
-		Serial.println(msg);
+		printf("Device mode: ");
+		printf(msg);
+		printf("\n");
 	}
 	
 	
 	// anchor starts in receiving mode, awaiting a ranging poll message
 	receiver();
 	// for first time ranging frequency computation
-	_rangingCountPeriod = millis();
+	_rangingCountPeriod = DW1000Device::getTimeMillis();
 }
 
 
@@ -165,12 +168,13 @@ void DW1000RangingClass::startAsAnchor(char address[], const uint8_t mode[]) {
 	DW1000.convertToByte(address, _currentAddress);
 	//write the address on the DW1000 chip
 	DW1000.setEUI(address);
-	Serial.print("device address: ");
-	Serial.println(address);
+	printf("device address: ");
+	printf(address);
+	printf("\n");
 	//we need to define a random short address:
-	randomSeed(analogRead(0));
-	_currentShortAddress[0] = random(0, 256);
-	_currentShortAddress[1] = random(0, 256);
+	//mwm TODO seed! randomSeed(analogRead(0));
+	_currentShortAddress[0] = rand()%256;
+	_currentShortAddress[1] = rand()%256;
 	
 	//we configur the network for mac filtering
 	//(device Address, network ID, frequency)
@@ -182,7 +186,8 @@ void DW1000RangingClass::startAsAnchor(char address[], const uint8_t mode[]) {
 	//defined type as anchor
 	_type = ANCHOR;
 	
-	Serial.println("### ANCHOR ###");
+	printf("### ANCHOR ###");
+	printf("\n");
 	
 }
 
@@ -191,12 +196,13 @@ void DW1000RangingClass::startAsTag(char address[], const uint8_t mode[]) {
 	DW1000.convertToByte(address, _currentAddress);
 	//write the address on the DW1000 chip
 	DW1000.setEUI(address);
-	Serial.print("device address: ");
-	Serial.println(address);
+	printf("device address: ");
+	printf(address);
+	printf("\n");
 	//we need to define a random short address:
-	randomSeed(analogRead(0));
-	_currentShortAddress[0] = random(0, 256);
-	_currentShortAddress[1] = random(0, 256);
+    //mwm TODO seed! randomSeed(analogRead(0));
+	_currentShortAddress[0] = rand()%256;
+	_currentShortAddress[1] = rand()%256;
 	
 	//we configur the network for mac filtering
 	//(device Address, network ID, frequency)
@@ -206,7 +212,8 @@ void DW1000RangingClass::startAsTag(char address[], const uint8_t mode[]) {
 	//defined type as tag
 	_type = TAG;
 	
-	Serial.println("### TAG ###");
+	printf("### TAG ###");
+	printf("\n");
 }
 
 bool DW1000RangingClass::addNetworkDevices(DW1000Device* device, bool shortAddress) {
@@ -319,7 +326,7 @@ DW1000Device* DW1000RangingClass::getDistantDevice() {
  * ######################################################################### */
 
 void DW1000RangingClass::checkForReset() {
-	uint32_t curMillis = millis();
+	uint32_t curMillis = DW1000Device::getTimeMillis();
 	if(!_sentAck && !_receivedAck) {
 		// check if inactive
 		if(curMillis-_lastActivity > _resetPeriod) {
@@ -355,12 +362,14 @@ int16_t DW1000RangingClass::detectMessageType(uint8_t datas[]) {
 		//we have a short mac frame message (poll, range, range report, etc..)
 		return datas[SHORT_MAC_LEN];
 	}
+	//mwm need to return something!
+	return 0;
 }
 
 void DW1000RangingClass::loop() {
 	//we check if needed to reset !
 	checkForReset();
-	uint32_t time = millis(); // TODO other name - too close to "timer"
+	uint32_t time = DW1000Device::getTimeMillis(); // TODO other name - too close to "timer"
 	if(time-timer > _timerDelay) {
 		timer = time;
 		timerTick();
@@ -478,13 +487,14 @@ void DW1000RangingClass::loop() {
 			
 			
 			if(myDistantDevice == NULL) {
-				Serial.println("Not found");
+				printf("Not found");
+				printf("\n");
 				//we don't have the short address of the device in memory
 				/*
-				Serial.print("unknown: ");
-				Serial.print(address[0], HEX);
-				Serial.print(":");
-				Serial.println(address[1], HEX);
+				printf("unknown: ");
+				printf(address[0], HEX);
+				printf(":");
+				printf(address[1], HEX);
 				*/
 				return;
 			}
@@ -568,7 +578,8 @@ void DW1000RangingClass::loop() {
 								
 								if (_useRangeFilter) {
 									//Skip first range
-									if (myDistantDevice->getRange() != 0.0f) {
+									//if (myDistantDevice->getRange() != 0.0f) {
+									if (fabsf(myDistantDevice->getRange()) < 1e-6f) {
 										distance = filterValue(distance, myDistantDevice->getRange(), _rangeFilterValue);
 									}
 								}
@@ -632,7 +643,8 @@ void DW1000RangingClass::loop() {
 					
 					if (_useRangeFilter) {
 						//Skip first range
-						if (myDistantDevice->getRange() != 0.0f) {
+						//if (myDistantDevice->getRange() != 0.0f) {
+                        if (fabsf(myDistantDevice->getRange()) < 1e-6f) {
 							curRange = filterValue(curRange, myDistantDevice->getRange(), _rangeFilterValue);
 						}
 					}
@@ -691,7 +703,7 @@ void DW1000RangingClass::handleReceived() {
 
 void DW1000RangingClass::noteActivity() {
 	// update activity timestamp, so that we do not reach "resetPeriod"
-	_lastActivity = millis();
+	_lastActivity = DW1000Device::getTimeMillis();
 }
 
 void DW1000RangingClass::resetInactive() {
@@ -950,7 +962,8 @@ void DW1000RangingClass::visualizeDatas(uint8_t datas[]) {
 	char string[60];
 	sprintf(string, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
 					datas[0], datas[1], datas[2], datas[3], datas[4], datas[5], datas[6], datas[7], datas[8], datas[9], datas[10], datas[11], datas[12], datas[13], datas[14], datas[15]);
-	Serial.println(string);
+	printf(string);
+	printf("\n");
 }
 
 
@@ -968,4 +981,3 @@ float DW1000RangingClass::filterValue(float value, float previousValue, uint16_t
 
 
 
-#endif

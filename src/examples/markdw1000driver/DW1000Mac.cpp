@@ -1,4 +1,3 @@
-#if 0
 /*
  * Copyright (c) 2015 by Thomas Trojer <thomas@trojer.net> and Leopold Sayous <leosayous@gmail.com>
  * Decawave DW1000 library for arduino.
@@ -158,5 +157,3 @@ void DW1000Mac::reverseArray(uint8_t to[], uint8_t from[], int16_t size) {
 		*(to+i) = *(from+size-i-1);
 	}
 }
-
-#endif

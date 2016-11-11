@@ -31,14 +31,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <Arduino.h>
-//#include <SPI.h>
-#include <drivers/device/spi.h>
 #include "DW1000Constants.h"
 #include "DW1000Time.h"
+#include <drivers/device/spi.h>
 
-class DW1000Class : public device::SPI
-{
+class DW1000Class : public device::SPI{
 public:
     DW1000Class(int bus, spi_dev_e device);
     virtual ~DW1000Class() {};
@@ -50,7 +47,7 @@ public:
 	@param[in] irq The interrupt line/pin that connects the Arduino.
 	@param[in] rst The reset line/pin for hard resets of ICs that connect to the Arduino. Value 0xff means soft reset.
 	*/
-	void begin(void);//(uint32_t irq, uint32_t rst = 0xff);
+	void begin();
 	
 	/** 
 	Selects a specific DW1000 chip for communication. In case of a single DW1000 chip in use
@@ -60,7 +57,7 @@ public:
 	@param[in] ss The chip select line/pin that connects the to-be-selected chip with the
 	Arduino.
 	*/
-	void select(uint32_t ss);
+	void select(uint8_t ss);
 	
 	/** 
 	(Re-)selects a specific DW1000 chip for communication. In case of a single DW1000 chip in use
@@ -71,7 +68,7 @@ public:
 	@param[in] ss The chip select line/pin that connects the to-be-selected chip with the
 	Arduino.
 	*/
-	void reselect(uint32_t ss);
+	void reselect(uint8_t ss);
 	
 	/** 
 	Tells the driver library that no communication to a DW1000 will be required anymore.
@@ -134,6 +131,8 @@ public:
 
 	@param[in] val An arbitrary numeric network identifier.
 	*/
+	
+	
 	void setNetworkId(uint16_t val);
 	
 	/** 
@@ -221,9 +220,9 @@ public:
 	DW1000Time   setDelay(const DW1000Time& delay);
 	void         receivePermanently(bool val);
 	void         setData(uint8_t data[], uint16_t n);
-	//mwm no string void         setData(const String& data);
+//	void         setData(const char* data);
 	void         getData(uint8_t data[], uint16_t n);
-	//mwm no string void         getData(String& data);
+//	void         getData(char* data);
 	uint16_t     getDataLength();
 	void         getTransmitTimestamp(DW1000Time& time);
 	void         getReceiveTimestamp(DW1000Time& time);
@@ -328,12 +327,12 @@ public:
 	static constexpr uint8_t TRX_RATE_110KBPS  = 0x00;
 	static constexpr uint8_t TRX_RATE_850KBPS  = 0x01;
 	static constexpr uint8_t TRX_RATE_6800KBPS = 0x02;
-
+	
 	// transmission pulse frequency
 	// 0x00 is 4MHZ, but receiver in DW1000 does not support it (!??)
 	static constexpr uint8_t TX_PULSE_FREQ_16MHZ = 0x01;
 	static constexpr uint8_t TX_PULSE_FREQ_64MHZ = 0x02;
-
+	
 	// preamble length (PE + TXPSR bits)
 	static constexpr uint8_t TX_PREAMBLE_LEN_64   = 0x01;
 	static constexpr uint8_t TX_PREAMBLE_LEN_128  = 0x05;
@@ -343,13 +342,13 @@ public:
 	static constexpr uint8_t TX_PREAMBLE_LEN_1536 = 0x06;
 	static constexpr uint8_t TX_PREAMBLE_LEN_2048 = 0x0A;
 	static constexpr uint8_t TX_PREAMBLE_LEN_4096 = 0x03;
-
+	
 	// PAC size. */
 	static constexpr uint8_t PAC_SIZE_8  = 8;
 	static constexpr uint8_t PAC_SIZE_16 = 16;
 	static constexpr uint8_t PAC_SIZE_32 = 32;
 	static constexpr uint8_t PAC_SIZE_64 = 64;
-
+	
 	/* channel of operation. */
 	static constexpr uint8_t CHANNEL_1 = 1;
 	static constexpr uint8_t CHANNEL_2 = 2;
@@ -357,7 +356,7 @@ public:
 	static constexpr uint8_t CHANNEL_4 = 4;
 	static constexpr uint8_t CHANNEL_5 = 5;
 	static constexpr uint8_t CHANNEL_7 = 7;
-
+	
 	/* preamble codes. */
 	static constexpr uint8_t PREAMBLE_CODE_16MHZ_1  = 1;
 	static constexpr uint8_t PREAMBLE_CODE_16MHZ_2  = 2;
@@ -375,12 +374,12 @@ public:
 	static constexpr uint8_t PREAMBLE_CODE_64MHZ_18 = 18;
 	static constexpr uint8_t PREAMBLE_CODE_64MHZ_19 = 19;
 	static constexpr uint8_t PREAMBLE_CODE_64MHZ_20 = 20;
-
+	
 	/* frame length settings. */
 	static constexpr uint8_t FRAME_LENGTH_NORMAL   = 0x00;
 	static constexpr uint8_t FRAME_LENGTH_EXTENDED = 0x03;
-
-	/* pre-defined modes of operation (3 bytes for data rate, pulse frequency and
+	
+	/* pre-defined modes of operation (3 bytes for data rate, pulse frequency and 
 	preamble length). */
 	static constexpr uint8_t MODE_LONGDATA_RANGE_LOWPOWER[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_2048};
 	static constexpr uint8_t MODE_SHORTDATA_FAST_LOWPOWER[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_128};
@@ -391,9 +390,9 @@ public:
 
 //private:
 	/* chip select, reset and interrupt pins. */
-//	static uint32_t _ss;
-//	static uint32_t _rst;
-//	static uint32_t _irq;
+	static uint8_t _ss;
+	static uint8_t _rst;
+	static uint8_t _irq;
 	
 	/* callbacks. */
 	static void (* _handleError)(void);
@@ -402,7 +401,7 @@ public:
 	static void (* _handleReceiveFailed)(void);
 	static void (* _handleReceiveTimeout)(void);
 	static void (* _handleReceiveTimestampAvailable)(void);
-
+	
 	/* register caches. */
 	static uint8_t _syscfg[LEN_SYS_CFG];
 	static uint8_t _sysctrl[LEN_SYS_CTRL];
@@ -410,14 +409,14 @@ public:
 	static uint8_t _txfctrl[LEN_TX_FCTRL];
 	static uint8_t _sysmask[LEN_SYS_MASK];
 	static uint8_t _chanctrl[LEN_CHAN_CTRL];
-
+	
 	/* device status monitoring */
 	static uint8_t _vmeas3v3;
 	static uint8_t _tmeas23C;
 
 	/* PAN and short address. */
 	static uint8_t _networkAndAddress[LEN_PANADR];
-
+	
 	/* internal helper that guide tuning the chip. */
 	static bool    _smartPower;
 	static uint8_t       _extendedFrameLength;
@@ -428,16 +427,16 @@ public:
 	static uint8_t       _dataRate;
 	static uint8_t       _pacSize;
 	static DW1000Time _antennaDelay;
-
+	
 	/* internal helper to remember how to properly act. */
 	static bool _permanentReceive;
 	static bool _frameCheck;
-
+	
 	// whether RX or TX is active
 	static uint8_t _deviceMode;
 	
 	/* Arduino interrupt handler */
-    void handleInterrupt();
+	void handleInterrupt();
 	
 	/* Allow MAC frame filtering . */
 	// TODO auto-acknowledge
@@ -509,7 +508,7 @@ public:
 	
 	/* internal helper for bit operations on multi-bytes. */
 	bool getBit(uint8_t data[], uint16_t n, uint16_t bit);
-	void setBit(uint8_t data[], uint16_t n, uint16_t bit, bool val);
+	void    setBit(uint8_t data[], uint16_t n, uint16_t bit, bool val);
 	
 	/* Register is 6 bit, 7 = write, 6 = sub-adressing, 5-0 = register value
 	 * Total header with sub-adressing can be 15 bit. */
@@ -518,30 +517,29 @@ public:
 	static const uint8_t READ       = 0x00; // regular read
 	static const uint8_t READ_SUB   = 0x40; // read with sub address
 	static const uint8_t RW_SUB_EXT = 0x80; // R/W with sub address extension
-
+	
 	/* clocks available. */
 	static const uint8_t AUTO_CLOCK = 0x00;
 	static const uint8_t XTI_CLOCK  = 0x01;
 	static const uint8_t PLL_CLOCK  = 0x02;
-
-	/* SPI configs. */
+	
+//	/* SPI configs. */
 //	static const SPISettings _fastSPI;
 //	static const SPISettings _slowSPI;
 //	static const SPISettings* _currentSPI;
-	static device::SPI _spi;
-
+	
 	/* range bias tables (500/900 MHz band, 16/64 MHz PRF), -61 to -95 dBm. */
 	static const uint8_t BIAS_500_16_ZERO = 10;
 	static const uint8_t BIAS_500_64_ZERO = 8;
 	static const uint8_t BIAS_900_16_ZERO = 7;
 	static const uint8_t BIAS_900_64_ZERO = 7;
-
+	
 	// range bias tables (500 MHz in [mm] and 900 MHz in [2mm] - to fit into bytes)
 	static constexpr uint8_t BIAS_500_16[] = {198, 187, 179, 163, 143, 127, 109, 84, 59, 31, 0, 36, 65, 84, 97, 106, 110, 112};
 	static constexpr uint8_t BIAS_500_64[] = {110, 105, 100, 93, 82, 69, 51, 27, 0, 21, 35, 42, 49, 62, 71, 76, 81, 86};
 	static constexpr uint8_t BIAS_900_16[] = {137, 122, 105, 88, 69, 47, 25, 0, 21, 48, 79, 105, 127, 147, 160, 169, 178, 197};
 	static constexpr uint8_t BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24, 45, 63, 76, 87, 98, 116, 122, 132, 142};
-
+	
 };
 
 extern DW1000Class DW1000;

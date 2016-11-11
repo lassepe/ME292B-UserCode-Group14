@@ -28,10 +28,9 @@ DW1000Class DW1000(1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000);//mwm todo: argum
  * #### Static member variables ##############################################
  * ######################################################################### */
 // pins
-//uint32_t DW1000Class::_ss;
-//uint32_t DW1000Class::_rst;//reset: GPIO_EXPANSION_LPSDECK_RESET
-//uint32_t DW1000Class::_irq;
-
+//uint8_t DW1000Class::_ss;
+//uint8_t DW1000Class::_rst;
+//uint8_t DW1000Class::_irq;
 
 
 // IRQ callbacks
@@ -110,6 +109,7 @@ const uint8_t DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24
  * ######################################################################### */
 
 #define DW1000_DEVICE_PATH	"/dev/dw1000"
+
 DW1000Class::DW1000Class(int bus, spi_dev_e device)
     : SPI("DW1000", DW1000_DEVICE_PATH, bus, device, SPIDEV_MODE3, SLOW_SPI_FREQ, GPIO_EXPANSION_LPSDECK_IRQ)//mwm: settings?
 {
@@ -120,22 +120,15 @@ void DW1000Class::end() {//?
 	//mwmspi SPI.end();
 }
 
-
-void DW1000Class::select(uint32_t ss) {//CF: dwConfigure
-	// mwm CF has no ss? reselect(ss);//mwm missing on CF
+void DW1000Class::select(uint8_t ss) {
+	reselect(ss);
 	// try locking clock at PLL speed (should be done already,
 	// but just to be sure)
 	enableClock(AUTO_CLOCK);
 	usleep(5000);// delay(5);
 	// reset chip (either soft or hard)
 
-	/* MWM:
-	//Not clear what this is for?
-	if( !(px4_arch_gpioread(_rst)) ) {
-		// dw1000 data sheet v2.08 §5.6.1 page 20, the RSTn pin should not be driven high but left floating.
-		pinMode(_rst, INPUT);
-	}
-	*/
+	stm32_configgpio(GPIO_EXPANSION_LPSDECK_RESET_IN);
 	reset();
 	// default network and node id
 	writeValueToBytes(_networkAndAddress, 0xFF, LEN_PANADR);
@@ -165,15 +158,13 @@ void DW1000Class::select(uint32_t ss) {//CF: dwConfigure
 	_tmeas23C = buf_otp[0];
 }
 
-/* // mwm CF has no ss?
-void DW1000Class::reselect(uint32_t ss) {
-	_ss = ss;
-	pinMode(_ss, OUTPUT);
-	digitalWrite(_ss, HIGH);
+//MWM set chip select to high.
+void DW1000Class::reselect(uint8_t ss) {
+    stm32_configgpio(GPIO_EXPANSION_LPSDECK_CS); //pinMode(_ss, OUTPUT);
+	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);// digitalWrite(_ss, HIGH);
 }
-*/
 
-void DW1000Class::begin(void){ //uint32_t irq, uint32_t rst) {
+void DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	// generous initial init/wake-up-idle delay
 	usleep(5000);// delay(5);
 	// start SPI
@@ -183,13 +174,9 @@ void DW1000Class::begin(void){ //uint32_t irq, uint32_t rst) {
 	//mwmspi SPI.usingInterrupt(digitalPinToInterrupt(irq)); // not every board support this, e.g. ESP8266
 #endif
 	// pin and basic member setup
-//	_rst        = rst;
-//	_irq        = irq;
 	_deviceMode = IDLE_MODE;
 	// attach interrupt
-	//attachInterrupt(_irq, DW1000Class::handleInterrupt, CHANGE); // todo interrupt for ESP8266
 	// TODO throw error if pin is not a interrupt pin
-
 	//mwmspi attachInterrupt(digitalPinToInterrupt(_irq), DW1000Class::handleInterrupt, RISING); // todo interrupt for ESP8266
 }
 
@@ -1509,7 +1496,6 @@ void DW1000Class::setBit(uint8_t data[], uint16_t n, uint16_t bit, bool val) {
 	uint8_t* targetByte = &data[idx];
 	shift = bit%8;
 	if(val) {
-		//mwm: double-check this logic!
 		*targetByte |= 1<<shift; //bitSet(*targetByte, shift);
 	} else {
 		*targetByte &= !(1<<shift); //bitClear(*targetByte, shift);
@@ -1537,8 +1523,7 @@ bool DW1000Class::getBit(uint8_t data[], uint16_t n, uint16_t bit) {
 	uint8_t targetByte = data[idx];
 	shift = bit%8;
 	
-	//mwm: check logic.
-	return targetByte & (1<<shift);//bitRead(targetByte, shift); // TODO wrong type returned uint8_t instead of bool
+	return (targetByte>>shift) & 1;//bitRead(targetByte, shift); // TODO wrong type returned uint8_t instead of bool
 }
 
 void DW1000Class::writeValueToBytes(uint8_t data[], int32_t val, uint16_t n) {
@@ -1576,22 +1561,12 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
 			headerLen += 2;
 		}
 	}
-
-	//mwm: this has to be wrong. Looks like the writebytes part???
 	//mwmspi SPI.beginTransaction(*_currentSPI);
 	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);//digitalWrite(_ss, LOW);
 	transfer(header, NULL, headerLen);// send header
 	transfer(NULL, data, n);// read values
-	/*
-	for(i = 0; i < headerLen; i++) {
-		SPI.transfer(header[i]); // send header
-	}
-	for(i = 0; i < n; i++) {
-		data[i] = SPI.transfer(JUNK); // read values
-	}
-	*/
-	usleep(5);
-	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);//digitalWrite(_ss, HIGH);
+	usleep(5);//delayMicroseconds(5);
+	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);//digitalWrite(_ss, HIGH);
 	//mwmspi SPI.endTransaction();
 }
 
@@ -1656,15 +1631,8 @@ void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint1
 	//mwmspi SPI.beginTransaction(*_currentSPI);
 	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);//digitalWrite(_ss, LOW);
 	transfer(header, NULL, headerLen);
-	/*
-	for(i = 0; i < headerLen; i++) {
-		SPI.transfer(header[i]); // send header
-	}
-	for(i = 0; i < data_size; i++) {
-		SPI.transfer(data[i]); // write values
-	}
-	*/
-	usleep(5);
+	transfer(data, NULL, data_size);
+	usleep(5);//delayMicroseconds(5);
 	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);// digitalWrite(_ss, HIGH);
 	//mwmspi SPI.endTransaction();
 }

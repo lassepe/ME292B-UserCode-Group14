@@ -184,7 +184,7 @@ stm32_boardinitialize(void)
 
 #include <math.h>
 
-static struct spi_dev_s *spi1;
+//static struct spi_dev_s *spi1=0;
 
 __EXPORT int nsh_archinitialize(void)
 {
@@ -223,6 +223,7 @@ __EXPORT int nsh_archinitialize(void)
 	led_off(LED_TX);
 	led_off(LED_RX);
 
+	/*
 	spi1 = up_spiinitialize(PX4_SPIDEV_EXPANSION_DW1000_PORT);
 	if (!spi1) {
 		message("[boot] FAILED to initialize SPI port 1\r\n");
@@ -230,11 +231,13 @@ __EXPORT int nsh_archinitialize(void)
 		led_on(LED_RED);
 		return -ENODEV;
 	}
-	/* Default SPI1 to 1MHz and de-assert the known chip selects. */
+	// Default SPI1 to 1MHz and de-assert the known chip selects.
 	SPI_SETFREQUENCY(spi1, 10000000);
 	SPI_SETBITS(spi1, 8);
-	SPI_SETMODE(spi1, SPIDEV_MODE3);
+	SPI_SETMODE(spi1, SPIDEV_MODE0);
 	SPI_SELECT(spi1, PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
+	*/
+
 	up_udelay(20);
 
 	result = board_i2c_initialize();

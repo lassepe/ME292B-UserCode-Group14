@@ -46,7 +46,7 @@ public:
 	@param[in] irq The interrupt line/pin that connects the Arduino.
 	@param[in] rst The reset line/pin for hard resets of ICs that connect to the Arduino. Value 0xff means soft reset.
 	*/
-	static void begin();
+	static int begin();
 	
 	/** 
 	Selects a specific DW1000 chip for communication. In case of a single DW1000 chip in use
@@ -56,7 +56,7 @@ public:
 	@param[in] ss The chip select line/pin that connects the to-be-selected chip with the
 	Arduino.
 	*/
-	static void select(uint8_t ss);
+	static void select(void);
 	
 	/** 
 	(Re-)selects a specific DW1000 chip for communication. In case of a single DW1000 chip in use
@@ -67,7 +67,7 @@ public:
 	@param[in] ss The chip select line/pin that connects the to-be-selected chip with the
 	Arduino.
 	*/
-	static void reselect(uint8_t ss);
+	static void reselect(void);
 	
 	/** 
 	Tells the driver library that no communication to a DW1000 will be required anymore.

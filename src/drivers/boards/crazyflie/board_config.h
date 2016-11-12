@@ -110,7 +110,7 @@
 /*MWM: SPI selects, expansion board
  * WHAT NUMBER FOR THE PORT????
  */
-#define PX4_SPIDEV_EXPANSION_DW1000_PORT	0
+#define PX4_SPIDEV_EXPANSION_DW1000_PORT	1
 #define PX4_SPIDEV_EXPANSION_DW1000_DEVID	0
 
 /* Devices on the onboard bus.

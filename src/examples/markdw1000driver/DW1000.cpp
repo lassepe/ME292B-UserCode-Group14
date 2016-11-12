@@ -23,9 +23,12 @@
 #include "DW1000.h"
 
 #define DW1000_SPI_BUS (1)
-#define DW1000_SPI_DEVICE_PATH	"/dev/dw1000"
+#define DW1000_SPI_DEVICE_PATH	nullptr
+static struct spi_dev_s *spi1;
+
 DW1000Class DW1000;
 
+/*mwmtmp
 class __EXPORT DW1000SPI : public device::SPI {
 public:
 	DW1000SPI(int bus, spi_dev_e device);
@@ -38,8 +41,11 @@ public:
 	int sendBytes(uint8_t *data, unsigned len);
 	int readBytes(uint8_t *data, unsigned len);
 };
+*/
 
+/*mwmtmp
 DW1000SPI dw1000spi(DW1000_SPI_BUS, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID);
+*/
 
 /* ###########################################################################
  * #### Static member variables ##############################################
@@ -125,6 +131,7 @@ const uint8_t DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24
  * #### Init and end #######################################################
  * ######################################################################### */
 
+/*mwmtmp
 DW1000SPI::DW1000SPI(int bus, spi_dev_e device)
 //    : SPI("DW1000SPI", DW1000_SPI_DEVICE_PATH, bus, device, SPIDEV_MODE3, SLOW_SPI_FREQ, GPIO_EXPANSION_LPSDECK_IRQ)//mwm: settings?
     : SPI("DW1000SPI",
@@ -132,7 +139,8 @@ DW1000SPI::DW1000SPI(int bus, spi_dev_e device)
 		  bus,
 		  device,
 		  SPIDEV_MODE0,
-		  SLOW_SPI_FREQ)//mwmspi removed IRQ pin here.
+		  SLOW_SPI_FREQ //mwmspi removed IRQ pin here. , GPIO_EXPANSION_LPSDECK_IRQ
+		  )
 {
 
 }
@@ -160,11 +168,12 @@ int DW1000SPI::readBytes(uint8_t *data, unsigned len){
 	return transfer(NULL, data, len);
 }
 
+*/
 
 ////////////////////////////////////////////////////////
 
-void DW1000Class::select(uint8_t ss) {
-	reselect(ss);
+void DW1000Class::select(void) {
+	reselect();
 	// try locking clock at PLL speed (should be done already,
 	// but just to be sure)
 	enableClock(AUTO_CLOCK);
@@ -201,17 +210,36 @@ void DW1000Class::select(uint8_t ss) {
 	_tmeas23C = buf_otp[0];
 }
 
-void DW1000Class::reselect(uint8_t ss) {
+void DW1000Class::reselect(void) {
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 }
 
-void DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
+int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	// generous initial init/wake-up-idle delay
 	usleep(5000);// delay(5);
 	//------------------------------------------//
 	// start SPI
 	//SPI.begin();
-	dw1000spi.init();
-	dw1000spi.setFrequencySlow();
+//	int spiInit = dw1000spi.init();
+//	if(spiInit){
+//		return spiInit;
+//	}
+
+	spi1 = up_spiinitialize(PX4_SPIDEV_EXPANSION_DW1000_PORT);
+	if (!spi1) {
+		printf("[boot] FAILED to initialize SPI port 1\r\n");
+		return -1;
+	}
+	// Default SPI1 to 1MHz and de-assert the known chip selects.
+    spi1->ops->lock(spi1,true);
+	spi1->ops->setfrequency(spi1, SLOW_SPI_FREQ);
+    spi1->ops->setbits(spi1, 8);
+    spi1->ops->setmode(spi1, SPIDEV_MODE0);
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
+    spi1->ops->lock(spi1,false);
+//	SPI_SELECT(spi1, PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
+
+//	dw1000spi.setFrequencySlow();
 	//------------------------------------------//
 #ifndef ESP8266
 	//mwm: this is to prevent conflicts, see here: https://www.arduino.cc/en/Reference/SPIusingInterrupt
@@ -221,6 +249,8 @@ void DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	_deviceMode = IDLE_MODE;
 	// attach interrupt // TODO throw error if pin is not a interrupt pin
 	//mwmspi attachInterrupt(digitalPinToInterrupt(_irq), DW1000Class::handleInterrupt, RISING); // todo interrupt for ESP8266
+
+	return 0;
 }
 
 void DW1000Class::manageLDE() {
@@ -255,15 +285,24 @@ void DW1000Class::enableClock(uint8_t clock) {
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
 	readBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 	if(clock == AUTO_CLOCK) {
-		dw1000spi.setFrequencyFast();
+        spi1->ops->lock(spi1,true);
+        spi1->ops->setfrequency(spi1, FAST_SPI_FREQ);
+        spi1->ops->lock(spi1,false);
+//		dw1000spi.setFrequencyFast();
 		pmscctrl0[0] = AUTO_CLOCK;
 		pmscctrl0[1] &= 0xFE;
 	} else if(clock == XTI_CLOCK) {
-		dw1000spi.setFrequencySlow();
+        spi1->ops->lock(spi1,true);
+        spi1->ops->setfrequency(spi1, SLOW_SPI_FREQ);
+        spi1->ops->lock(spi1,false);
+//		dw1000spi.setFrequencySlow();
 		pmscctrl0[0] &= 0xFC;
 		pmscctrl0[0] |= XTI_CLOCK;
 	} else if(clock == PLL_CLOCK) {
-		dw1000spi.setFrequencyFast();
+        spi1->ops->lock(spi1,true);
+        spi1->ops->setfrequency(spi1, FAST_SPI_FREQ);
+        spi1->ops->lock(spi1,false);
+//		dw1000spi.setFrequencyFast();
 		pmscctrl0[0] &= 0xFC;
 		pmscctrl0[0] |= PLL_CLOCK;
 	} else {
@@ -274,7 +313,7 @@ void DW1000Class::enableClock(uint8_t clock) {
 }
 
 void DW1000Class::reset() {
-	if(stm32_gpioread(GPIO_EXPANSION_LPSDECK_RESET_OUT)) {
+	if(stm32_gpioread(GPIO_EXPANSION_LPSDECK_RESET_IN)) {
 		softReset();
 	} else {
 		// dw1000 data sheet v2.08 §5.6.1 page 20, the RSTn pin should not be driven high but left floating.
@@ -1604,8 +1643,14 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
 			headerLen += 2;
 		}
 	}
-	dw1000spi.sendBytes(header, headerLen);
-	dw1000spi.readBytes(data, n);
+
+    spi1->ops->lock(spi1,true);
+	spi1->ops->exchange(spi1, header, NULL, headerLen);
+	spi1->ops->exchange(spi1, NULL, data, n);
+    spi1->ops->lock(spi1,false);
+//    _dev, send, recv, len
+//	dw1000spi.sendBytes(header, headerLen);
+//	dw1000spi.readBytes(data, n);
 	usleep(5);//delayMicroseconds(5);
 }
 
@@ -1667,8 +1712,12 @@ void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint1
 			headerLen += 2;
 		}
 	}
-	dw1000spi.sendBytes(header, headerLen);
-	dw1000spi.readBytes(data, data_size);
+    spi1->ops->lock(spi1,true);
+	spi1->ops->exchange(spi1, header, NULL, headerLen);
+	spi1->ops->exchange(spi1, NULL, data, data_size);
+    spi1->ops->lock(spi1,false);
+//	dw1000spi.sendBytes(header, headerLen);
+//	dw1000spi.readBytes(data, data_size);
 	usleep(5);//delayMicroseconds(5);
 }
 

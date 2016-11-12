@@ -52,6 +52,7 @@
 #include <uORB/topics/vehicle_attitude.h>
 
 #include "DW1000Ranging.h"
+#include "DW1000Device.h"
 
 extern "C" __EXPORT int mtest_main(int argc, char *argv[]);
 
@@ -97,6 +98,9 @@ int basicConnectivityTest(void){
     printf(msg);
     printf("\n");
 	printf("====================================\n");
+
+	printf("Running LED test\n");
+	DW1000.enableAllLeds();
 	return 0;
 }
 

@@ -322,6 +322,8 @@ public:
 	// host-initiated reading of temperature and battery voltage
 	static void getTempAndVbat(float& temp, float& vbat);
 
+    void enableAllLeds(void);
+
 	// transmission/reception bit rate
 	static constexpr uint8_t TRX_RATE_110KBPS  = 0x00;
 	static constexpr uint8_t TRX_RATE_850KBPS  = 0x01;

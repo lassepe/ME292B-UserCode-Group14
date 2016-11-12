@@ -23,29 +23,9 @@
 #include "DW1000.h"
 
 #define DW1000_SPI_BUS (1)
-#define DW1000_SPI_DEVICE_PATH	nullptr
 static struct spi_dev_s *spi1;
 
 DW1000Class DW1000;
-
-/*mwmtmp
-class __EXPORT DW1000SPI : public device::SPI {
-public:
-	DW1000SPI(int bus, spi_dev_e device);
-    virtual ~DW1000SPI();
-
-	virtual int	init();
-
-	void setFrequencyFast();
-	void setFrequencySlow();
-	int sendBytes(uint8_t *data, unsigned len);
-	int readBytes(uint8_t *data, unsigned len);
-};
-*/
-
-/*mwmtmp
-DW1000SPI dw1000spi(DW1000_SPI_BUS, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID);
-*/
 
 /* ###########################################################################
  * #### Static member variables ##############################################
@@ -131,45 +111,6 @@ const uint8_t DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24
  * #### Init and end #######################################################
  * ######################################################################### */
 
-/*mwmtmp
-DW1000SPI::DW1000SPI(int bus, spi_dev_e device)
-//    : SPI("DW1000SPI", DW1000_SPI_DEVICE_PATH, bus, device, SPIDEV_MODE3, SLOW_SPI_FREQ, GPIO_EXPANSION_LPSDECK_IRQ)//mwm: settings?
-    : SPI("DW1000SPI",
-    	  DW1000_SPI_DEVICE_PATH,
-		  bus,
-		  device,
-		  SPIDEV_MODE0,
-		  SLOW_SPI_FREQ //mwmspi removed IRQ pin here. , GPIO_EXPANSION_LPSDECK_IRQ
-		  )
-{
-
-}
-
-DW1000SPI::~DW1000SPI(){
-	//nothing here
-}
-
-int DW1000SPI::init(){
-	return device::SPI::init();
-}
-
-void DW1000SPI::setFrequencyFast(){
-	set_frequency(FAST_SPI_FREQ);
-}
-void DW1000SPI::setFrequencySlow(){
-	set_frequency(SLOW_SPI_FREQ);
-}
-
-int DW1000SPI::sendBytes(uint8_t *data, unsigned len){
-	return transfer(data, NULL, len);
-}
-
-int DW1000SPI::readBytes(uint8_t *data, unsigned len){
-	return transfer(NULL, data, len);
-}
-
-*/
-
 ////////////////////////////////////////////////////////
 
 void DW1000Class::select(void) {
@@ -178,13 +119,20 @@ void DW1000Class::select(void) {
 	// but just to be sure)
 	enableClock(AUTO_CLOCK);
 	usleep(5000);// delay(5);
-	// reset chip (either soft or hard)
 
+	// reset chip (either soft or hard)
 	stm32_configgpio(GPIO_EXPANSION_LPSDECK_RESET_IN);
 	reset();
+
+	printf("Expect <%x>\n",0xdeca0130);
+	uint8_t data[LEN_DEV_ID];
+	readBytes(DEV_ID, NO_SUB, data, LEN_DEV_ID);
+	printf("Got <%02x%02x%02x%02x>\n", data[0], data[1], data[2], data[3] );
+
 	// default network and node id
 	writeValueToBytes(_networkAndAddress, 0xFF, LEN_PANADR);
 	writeNetworkIdAndDeviceAddress();
+
 	// default system configuration
 	memset(_syscfg, 0, LEN_SYS_CFG);
 	setDoubleBuffering(false);
@@ -198,7 +146,8 @@ void DW1000Class::select(void) {
 	usleep(5000);// delay(5);
 	manageLDE();
 	usleep(5000);// delay(5);
-	enableClock(AUTO_CLOCK);
+//	enableClock(AUTO_CLOCK);
+	enableClock(PLL_CLOCK);//mwm as done by bitcraze ?WHY?
 	usleep(5000);// delay(5);
 	
 	// read the temp and vbat readings from OTP that were recorded during production test
@@ -211,6 +160,8 @@ void DW1000Class::select(void) {
 }
 
 void DW1000Class::reselect(void) {
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
+	usleep(5000);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 }
 
@@ -220,26 +171,24 @@ int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	//------------------------------------------//
 	// start SPI
 	//SPI.begin();
-//	int spiInit = dw1000spi.init();
-//	if(spiInit){
-//		return spiInit;
-//	}
 
 	spi1 = up_spiinitialize(PX4_SPIDEV_EXPANSION_DW1000_PORT);
 	if (!spi1) {
 		printf("[boot] FAILED to initialize SPI port 1\r\n");
 		return -1;
 	}
+
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
+	usleep(5000);
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
+	usleep(5000);
+
 	// Default SPI1 to 1MHz and de-assert the known chip selects.
-    spi1->ops->lock(spi1,true);
 	spi1->ops->setfrequency(spi1, SLOW_SPI_FREQ);
     spi1->ops->setbits(spi1, 8);
     spi1->ops->setmode(spi1, SPIDEV_MODE0);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
-    spi1->ops->lock(spi1,false);
-//	SPI_SELECT(spi1, PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
 
-//	dw1000spi.setFrequencySlow();
 	//------------------------------------------//
 #ifndef ESP8266
 	//mwm: this is to prevent conflicts, see here: https://www.arduino.cc/en/Reference/SPIusingInterrupt
@@ -255,6 +204,7 @@ int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 
 void DW1000Class::manageLDE() {
 	// transfer any ldo tune values
+	/*mwm bitcraze rem:
 	uint8_t ldoTune[LEN_OTP_RDAT];
 	readBytesOTP(0x04, ldoTune); // TODO #define
 	if(ldoTune[0] != 0) {
@@ -262,6 +212,8 @@ void DW1000Class::manageLDE() {
 	}
 	// tell the chip to load the LDE microcode
 	// TODO remove clock-related code (PMSC_CTRL) as handled separately
+	 *
+	 */
 	uint8_t pmscctrl0[LEN_PMSC_CTRL0];
 	uint8_t otpctrl[LEN_OTP_CTRL];
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
@@ -285,24 +237,15 @@ void DW1000Class::enableClock(uint8_t clock) {
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
 	readBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 	if(clock == AUTO_CLOCK) {
-        spi1->ops->lock(spi1,true);
         spi1->ops->setfrequency(spi1, FAST_SPI_FREQ);
-        spi1->ops->lock(spi1,false);
-//		dw1000spi.setFrequencyFast();
 		pmscctrl0[0] = AUTO_CLOCK;
 		pmscctrl0[1] &= 0xFE;
 	} else if(clock == XTI_CLOCK) {
-        spi1->ops->lock(spi1,true);
         spi1->ops->setfrequency(spi1, SLOW_SPI_FREQ);
-        spi1->ops->lock(spi1,false);
-//		dw1000spi.setFrequencySlow();
 		pmscctrl0[0] &= 0xFC;
 		pmscctrl0[0] |= XTI_CLOCK;
 	} else if(clock == PLL_CLOCK) {
-        spi1->ops->lock(spi1,true);
         spi1->ops->setfrequency(spi1, FAST_SPI_FREQ);
-        spi1->ops->lock(spi1,false);
-//		dw1000spi.setFrequencyFast();
 		pmscctrl0[0] &= 0xFC;
 		pmscctrl0[0] |= PLL_CLOCK;
 	} else {
@@ -769,7 +712,10 @@ void DW1000Class::getPrintableDeviceIdentifier(char msgBuffer[]) {
 	uint8_t data[LEN_DEV_ID];
 	readBytes(DEV_ID, NO_SUB, data, LEN_DEV_ID);
 	sprintf(msgBuffer, "%02X - model: %d, version: %d, revision: %d",
-					(uint16_t)((data[3] << 8) | data[2]), data[1], (data[0] >> 4) & 0x0F, data[0] & 0x0F);
+					(uint16_t)((data[3] << 8) | data[2]),//ID
+					data[1],//model
+					(data[0] >> 4) & 0x0F,//version
+					data[0] & 0x0F);//revision
 }
 
 void DW1000Class::getPrintableExtendedUniqueIdentifier(char msgBuffer[]) {
@@ -1615,6 +1561,8 @@ void DW1000Class::writeValueToBytes(uint8_t data[], int32_t val, uint16_t n) {
 	}
 }
 
+static uint8_t spiTxBuffer[196];
+static uint8_t spiRxBuffer[196];
 /*
  * Read bytes from the DW1000. Number of bytes depend on register length.
  * @param cmd
@@ -1644,13 +1592,13 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
 		}
 	}
 
-    spi1->ops->lock(spi1,true);
-	spi1->ops->exchange(spi1, header, NULL, headerLen);
-	spi1->ops->exchange(spi1, NULL, data, n);
-    spi1->ops->lock(spi1,false);
-//    _dev, send, recv, len
-//	dw1000spi.sendBytes(header, headerLen);
-//	dw1000spi.readBytes(data, n);
+    stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);
+    memcpy(spiTxBuffer, header, headerLen);
+    memset(spiTxBuffer+headerLen, 0, n);
+	spi1->ops->exchange(spi1, spiTxBuffer, spiRxBuffer, headerLen+n);
+    memcpy(data, spiRxBuffer+headerLen, n);
+    stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);
+
 	usleep(5);//delayMicroseconds(5);
 }
 
@@ -1712,12 +1660,14 @@ void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint1
 			headerLen += 2;
 		}
 	}
-    spi1->ops->lock(spi1,true);
-	spi1->ops->exchange(spi1, header, NULL, headerLen);
-	spi1->ops->exchange(spi1, NULL, data, data_size);
-    spi1->ops->lock(spi1,false);
-//	dw1000spi.sendBytes(header, headerLen);
-//	dw1000spi.readBytes(data, data_size);
+
+    stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);
+    memcpy(spiTxBuffer, header, headerLen);
+    memcpy(spiTxBuffer+headerLen, data, data_size);
+	spi1->ops->exchange(spi1, spiTxBuffer, spiRxBuffer, headerLen+data_size);
+    memcpy(data, spiRxBuffer+headerLen, data_size);
+    stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);
+
 	usleep(5);//delayMicroseconds(5);
 }
 
@@ -1769,4 +1719,62 @@ void DW1000Class::getPrettyBytes(uint8_t cmd, uint16_t offset, char msgBuffer[],
 	}
 	msgBuffer[b++] = '\0';
 	free(readBuf);
+}
+
+
+void DW1000Class::enableAllLeds(void)
+{
+
+  // Set all 4 GPIO in LED mode
+  uint8_t dat[4];
+  readBytes(GPIO_CTRL,GPIO_MODE_SUB,dat,4);
+//  reg = dwSpiRead32(dev, GPIO_CTRL, GPIO_MODE_SUB);
+  dat[3] &= ~0x00;
+  dat[2] &= ~0x00;
+  dat[1] &= ~0x3F;
+  dat[0] &= ~0xC0;
+//  reg &= ~0x00 00 3F C0ul;
+  dat[3] |= 0x00;
+  dat[2] |= 0x00;
+  dat[1] |= 0x15;
+  dat[0] |= 0x40;
+//  reg |= 0x00 00 15 40ul;
+  writeBytes(GPIO_CTRL, GPIO_MODE_SUB, dat, 4);
+//  dwSpiWrite32(dev, GPIO_CTRL, GPIO_MODE_SUB, reg);
+
+  // Enable debounce clock (used to clock the LED blinking)
+  readBytes(PMSC, PMSC_CTRL0_SUB,dat, 4);
+//  reg = dwSpiRead32(dev, PMSC, PMSC_CTRL0_SUB);
+  dat[3] |= 0x00;
+  dat[2] |= 0x84;
+  dat[1] |= 0x00;
+  dat[0] |= 0x00;
+  //reg |= 0x00 84 00 00ul;
+  writeBytes(PMSC, PMSC_CTRL0_SUB, dat, 4);
+//  dwSpiWrite32(dev, PMSC, PMSC_CTRL0_SUB, reg);
+
+  // Enable LED blinking and set the rate
+  dat[3] = 0x00;
+  dat[2] = 0x84;
+  dat[1] = 0x01;
+  dat[0] = 0x10;
+//  reg = 0x00 00 01 10ul;
+  writeBytes(PMSC, PMSC_LEDC, dat, 4);
+//  dwSpiWrite32(dev, PMSC, PMSC_LEDC, reg);
+
+  // Trigger a manual blink of the LEDs for test
+  dat[3] |= 0x00;
+  dat[2] |= 0x0f;
+  dat[1] |= 0x00;
+  dat[0] |= 0x00;
+//  reg |= 0x00 0f 00 00ul;
+  writeBytes(PMSC, PMSC_LEDC, dat, 4);
+//  dwSpiWrite32(dev, PMSC, PMSC_LEDC, reg);
+  dat[3] &= ~0x00;
+  dat[2] &= ~0x0f;
+  dat[1] &= ~0x00;
+  dat[0] &= ~0x00;
+//  reg &= ~0x00 0f 00 00ul;
+//  dwSpiWrite32(dev, PMSC, PMSC_LEDC, reg);
+  writeBytes(PMSC, PMSC_LEDC, dat, 4);
 }

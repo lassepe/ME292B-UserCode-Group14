@@ -240,8 +240,17 @@
 #define PMSC_CTRL0_SUB 0x00
 #define LEN_PMSC_CTRL0 4
 
+#define PMSC_LEDC 0x28
+
 // TX_ANTD Antenna delays
 #define TX_ANTD 0x18
 #define LEN_TX_ANTD 2
+
+// GPIO control register
+#define GPIO_CTRL 0x26
+#define GPIO_MODE_SUB 0x00
+#define LEN_GPIO_MODE 4
+#define GPIO_DIR_SUB 0x08
+#define LEN_GPIO_DIR 4
 
 #endif

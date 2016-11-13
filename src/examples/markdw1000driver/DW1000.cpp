@@ -124,11 +124,6 @@ void DW1000Class::select(void) {
 	stm32_configgpio(GPIO_EXPANSION_LPSDECK_RESET_IN);
 	reset();
 
-	printf("Expect <%x>\n",0xdeca0130);
-	uint8_t data[LEN_DEV_ID];
-	readBytes(DEV_ID, NO_SUB, data, LEN_DEV_ID);
-	printf("Got <%02x%02x%02x%02x>\n", data[0], data[1], data[2], data[3] );
-
 	// default network and node id
 	writeValueToBytes(_networkAndAddress, 0xFF, LEN_PANADR);
 	writeNetworkIdAndDeviceAddress();
@@ -198,6 +193,8 @@ int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	_deviceMode = IDLE_MODE;
 	// attach interrupt // TODO throw error if pin is not a interrupt pin
 	//mwmspi attachInterrupt(digitalPinToInterrupt(_irq), DW1000Class::handleInterrupt, RISING); // todo interrupt for ESP8266
+
+    stm32_gpiosetevent(GPIO_EXPANSION_LPSDECK_IRQ, true, false, false, DW1000Class::handleInterrupt);
 
 	return 0;
 }
@@ -663,7 +660,7 @@ void DW1000Class::tune() {
  * #### Interrupt handling ###################################################
  * ######################################################################### */
 
-void DW1000Class::handleInterrupt() {
+int  DW1000Class::handleInterrupt(int irq, FAR void *context) {
 	// read current status and handle via callbacks
 	readSystemEventStatusRegister();
 	if(isClockProblem() /* TODO and others */ && _handleError != 0) {
@@ -701,6 +698,7 @@ void DW1000Class::handleInterrupt() {
 	}
 	// clear all status that is left unhandled
 	clearAllStatus();
+	return 0;
 }
 
 /* ###########################################################################

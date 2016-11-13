@@ -433,7 +433,7 @@ public:
 	static uint8_t _deviceMode;
 	
 	/* Arduino interrupt handler */
-	static void handleInterrupt();
+    static int  handleInterrupt(int irq, FAR void *context);
 	
 	/* Allow MAC frame filtering . */
 	// TODO auto-acknowledge

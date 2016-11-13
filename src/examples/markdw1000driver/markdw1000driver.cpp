@@ -153,23 +153,9 @@ int basicSender(void){
 	DW1000.attachSentHandler(handleSent);
 	printDeviceID();
 
-    int lastVal = int(stm32_gpioread(GPIO_EXPANSION_LPSDECK_IRQ));
-    printf("Pre-transmit, IRQ pin is %d\n", lastVal);
     sentAck = false;
-
     transmitter();
     printDeviceID();
-	return 0;
-
-    for(int i=0; i<1000; i++){
-        int newVal = int(stm32_gpioread(GPIO_EXPANSION_LPSDECK_IRQ));
-        if(newVal != lastVal){
-        	lastVal = newVal;
-        	printf("IRQ changed to %d\n", lastVal);
-        }
-        usleep(1000);
-    }
-    return 0;
 
 	printf("Starting loop\n");
 	for (unsigned i = 0; i < 1000; i++) {

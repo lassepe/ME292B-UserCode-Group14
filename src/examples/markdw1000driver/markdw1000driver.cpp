@@ -69,7 +69,7 @@ int basicConnectivityTest(void){
 	int debug;
 	debug = DW1000.begin();
 	printf("DW1000.begin() = %d\n",debug);
-	DW1000.select();
+	DW1000.configure();
 	printf("DW1000 initialized ... \n");
 	// general configuration
 	DW1000.newConfiguration();
@@ -139,8 +139,7 @@ int basicSender(void){
 	// initialize the driver
 	DW1000.begin();
     printDeviceID();
-	DW1000.select();
-	printDeviceID();
+	DW1000.configure();
 
 	// general configuration
 	DW1000.newConfiguration();
@@ -178,6 +177,7 @@ int basicSender(void){
 		// again, transmit some data
 		transmitter();
 	}
+	DW1000.idle();
 	return 0;
 }
 
@@ -185,7 +185,7 @@ int markTestTimestampTest(void){
 	printf("DW1000 timestamp test\n");
 	// initialize the driver
 	DW1000.begin();
-	DW1000.select();
+	DW1000.configure();
 	printf("DW1000 initialized ... \n");
 	// general configuration
 	DW1000.newConfiguration();

@@ -113,10 +113,7 @@ const uint8_t DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24
 
 ////////////////////////////////////////////////////////
 
-void DW1000Class::select(void) {
-	reselect();
-	// try locking clock at PLL speed (should be done already,
-	// but just to be sure)
+int DW1000Class::configure(){
 	enableClock(AUTO_CLOCK);
 	usleep(5000);// delay(5);
 
@@ -141,9 +138,9 @@ void DW1000Class::select(void) {
 	usleep(5000);// delay(5);
 	manageLDE();
 	usleep(5000);// delay(5);
-//	enableClock(AUTO_CLOCK);
-	enableClock(PLL_CLOCK);//mwm as done by bitcraze ?WHY?
+	enableClock(PLL_CLOCK);//mwm as done by bitcraze
 	usleep(5000);// delay(5);
+
 	
 	// read the temp and vbat readings from OTP that were recorded during production test
 	// see 6.3.1 OTP memory map
@@ -152,12 +149,8 @@ void DW1000Class::select(void) {
 	_vmeas3v3 = buf_otp[0];
 	readBytesOTP(0x009, buf_otp); // the stored 23C reading
 	_tmeas23C = buf_otp[0];
-}
 
-void DW1000Class::reselect(void) {
-	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
-	usleep(5000);
-	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
+	return 0;
 }
 
 int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
@@ -182,7 +175,7 @@ int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	spi1->ops->setfrequency(spi1, SLOW_SPI_FREQ);
     spi1->ops->setbits(spi1, 8);
     spi1->ops->setmode(spi1, SPIDEV_MODE0);
-	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
+//	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 
 	//------------------------------------------//
 #ifndef ESP8266
@@ -970,7 +963,7 @@ void DW1000Class::clearInterrupts() {
 
 void DW1000Class::idle() {
 	memset(_sysctrl, 0, LEN_SYS_CTRL);
-	setBit(_sysctrl, LEN_SYS_CTRL, TRXOFF_BIT, true);
+	setBit(_sysctrl, LEN_SYS_CTRL, TRXOFF_BIT, true);//this forces to idle mode
 	_deviceMode = IDLE_MODE;
 	writeBytes(SYS_CTRL, NO_SUB, _sysctrl, LEN_SYS_CTRL);
 }
@@ -1524,7 +1517,7 @@ void DW1000Class::setBit(uint8_t data[], uint16_t n, uint16_t bit, bool val) {
 	if(val) {
 		*targetByte |= 1<<shift; //bitSet(*targetByte, shift);
 	} else {
-		*targetByte &= !(1<<shift); //bitClear(*targetByte, shift);
+		*targetByte &= ~(1<<shift); //bitClear(*targetByte, shift);
 	}
 }
 
@@ -1590,14 +1583,12 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
 		}
 	}
 
-    stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);
     memcpy(spiTxBuffer, header, headerLen);
     memset(spiTxBuffer+headerLen, 0, n);
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 	spi1->ops->exchange(spi1, spiTxBuffer, spiRxBuffer, headerLen+n);
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
     memcpy(data, spiRxBuffer+headerLen, n);
-    stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);
-
-	usleep(5);//delayMicroseconds(5);
 }
 
 // always 4 bytes
@@ -1659,12 +1650,12 @@ void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint1
 		}
 	}
 
-    stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 0);
     memcpy(spiTxBuffer, header, headerLen);
     memcpy(spiTxBuffer+headerLen, data, data_size);
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 	spi1->ops->exchange(spi1, spiTxBuffer, spiRxBuffer, headerLen+data_size);
+	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
     memcpy(data, spiRxBuffer+headerLen, data_size);
-    stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);
 
 	usleep(5);//delayMicroseconds(5);
 }

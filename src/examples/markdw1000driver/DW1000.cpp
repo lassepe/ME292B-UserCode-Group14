@@ -22,7 +22,6 @@
 #include <px4_config.h>
 #include "DW1000.h"
 
-#define DW1000_SPI_BUS (1)
 static struct spi_dev_s *spi1;
 
 DW1000Class DW1000;
@@ -1551,9 +1550,6 @@ void DW1000Class::writeValueToBytes(uint8_t data[], int32_t val, uint16_t n) {
 		data[i] = ((val >> (i*8)) & 0xFF); // TODO bad types - signed unsigned problem
 	}
 }
-
-static uint8_t spiTxBuffer[196];
-static uint8_t spiRxBuffer[196];
 /*
  * Read bytes from the DW1000. Number of bytes depend on register length.
  * @param cmd
@@ -1582,6 +1578,9 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
 			headerLen += 2;
 		}
 	}
+
+    static uint8_t spiTxBuffer[196];
+    static uint8_t spiRxBuffer[196];
 
     memcpy(spiTxBuffer, header, headerLen);
     memset(spiTxBuffer+headerLen, 0, n);
@@ -1650,13 +1649,14 @@ void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint1
 		}
 	}
 
+    static uint8_t spiTxBuffer[196];
+    static uint8_t spiRxBuffer[196];
+
     memcpy(spiTxBuffer, header, headerLen);
     memcpy(spiTxBuffer+headerLen, data, data_size);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 	spi1->ops->exchange(spi1, spiTxBuffer, spiRxBuffer, headerLen+data_size);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
-
-	usleep(5);//delayMicroseconds(5);
 }
 
 

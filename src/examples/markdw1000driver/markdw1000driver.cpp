@@ -188,6 +188,85 @@ int basicSender(void){
 	return 0;
 }
 
+volatile bool received = false;
+volatile bool error = false;
+volatile int16_t numReceived = 0; // todo check int type
+#define MESSAGE_LEN 10
+uint8_t message[MESSAGE_LEN];
+
+void handleReceived();
+void handleError();
+void receiver();
+int basicReceiver(void);
+
+void handleReceived() {
+  // status change on reception success
+  received = true;
+}
+
+void handleError() {
+  error = true;
+}
+
+void receiver() {
+  DW1000.newReceive();
+  DW1000.setDefaults();
+  // so we don't need to restart the receiver manually
+  DW1000.receivePermanently(true);
+  DW1000.startReceive();
+}
+
+int basicReceiver(void){
+	printf("DW1000 receiver test\n");
+	// initialize the driver
+	DW1000.begin();
+    printDeviceID();
+	DW1000.configure();
+
+	// general configuration
+	DW1000.newConfiguration();
+	DW1000.setDeviceAddress(5);
+	DW1000.setNetworkId(10);
+	DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_LOWPOWER);
+	DW1000.commitConfiguration();
+
+	// attach callback for (successfully) sent messages
+	DW1000.interruptOnReceived(true);
+	DW1000.interruptOnReceiveFailed(true);
+	DW1000.interruptOnReceiveTimeout(true);
+	DW1000.writeSystemEventMaskRegister();
+
+    DW1000.attachReceivedHandler(handleReceived);
+    DW1000.attachReceiveFailedHandler(handleError);
+    DW1000.attachErrorHandler(handleError);
+
+    receiver();
+
+	printf("Starting loop\n");
+	for (unsigned i = 0; i < 10000; i++) {
+		if (received) {
+			numReceived++;
+			// get data as string
+			DW1000.getData(message, MESSAGE_LEN);
+			printf("Received message ... #%d\n", int(numReceived));
+			printf("Data is ... <%s>\n", message);
+			printf("FP power is %f[dBm]\n", double(DW1000.getFirstPathPower()));
+			printf("RX power is %f[dBm]\n", double(DW1000.getReceivePower()));
+			printf("Signal quality is %f\n", double(DW1000.getReceiveQuality()));
+			received = false;
+		}
+		if (error) {
+			printf("Error receiving a message\n");
+			error = false;
+			DW1000.getData(message, MESSAGE_LEN);
+			printf("Error data is <%s>\n", message);
+		}
+		usleep(1000);
+	}
+	DW1000.idle();
+	return 0;
+}
+
 int markTestTimestampTest(void){
 	printf("DW1000 timestamp test\n");
 	// initialize the driver
@@ -217,6 +296,7 @@ void usage(){
 		printf("Need at least one argument:\n");
 		printf("\tc -> basic connectivity test\n");
 		printf("\ts -> basic sender\n");
+		printf("\tr -> basic receiver\n");
 		printf("\tt -> Timing test\n");
 }
 
@@ -230,6 +310,9 @@ int mtest_main(int argc, char *argv[]) {
 	}
 	if(!strcmp(argv[1], "c")){
         return basicConnectivityTest();
+	}
+	if(!strcmp(argv[1], "r")){
+        return basicReceiver();
 	}
 	if(!strcmp(argv[1], "s")){
         return basicSender();

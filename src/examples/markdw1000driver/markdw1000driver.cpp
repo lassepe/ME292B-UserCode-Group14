@@ -66,9 +66,7 @@ void printDeviceID();
 
 int basicConnectivityTest(void){
 	// initialize the driver
-	int debug;
-	debug = DW1000.begin();
-	printf("DW1000.begin() = %d\n",debug);
+	DW1000.begin();
 	DW1000.configure();
 	printf("DW1000 initialized ... \n");
 	// general configuration
@@ -112,18 +110,16 @@ void handleSent() {
 void transmitter() {
   // transmit some data
   printf("Transmitting packet ... #%d\n",int(sentNum));
+  DW1000.idle();
   DW1000.newTransmit();
   DW1000.setDefaults();
-  uint8_t msg[5];
-  msg[0] = '1';
-  msg[1] = '2';
-  msg[2] = '3';
-  msg[3] = '4';
-  msg[4] = 0;
+  uint8_t msg[5] = "1234";
   DW1000.setData(msg,5);
+
   // delay sending the message for the given amount
   DW1000Time deltaTime = DW1000Time(10, DW1000Time::MILLISECONDS);
   DW1000.setDelay(deltaTime);
+
   DW1000.startTransmit();
   delaySent = DW1000Device::getTimeMillis();
 }
@@ -149,16 +145,25 @@ int basicSender(void){
 	DW1000.commitConfiguration();
 
 	// attach callback for (successfully) sent messages
+	DW1000.interruptOnSent(true);
+	DW1000.writeSystemEventMaskRegister();
+
 	DW1000.attachSentHandler(handleSent);
-	printDeviceID();
 
     sentAck = false;
     transmitter();
-    printDeviceID();
 
 	printf("Starting loop\n");
-	for (unsigned i = 0; i < 1000; i++) {
+	unsigned failCount = 0;
+	unsigned numOK = 0;
+	for (unsigned i = 0; i < 2000; i++) {
 		if (!sentAck) {
+			failCount++;
+			if(failCount > 500){
+				printf("Failed! Resending ...\n");
+				failCount = 0;
+				transmitter();
+			}
             usleep(1000);
 			continue;
 		}
@@ -176,6 +181,8 @@ int basicSender(void){
 		sentNum++;
 		// again, transmit some data
 		transmitter();
+		numOK ++;
+		if(numOK > 10) break;
 	}
 	DW1000.idle();
 	return 0;

@@ -36,6 +36,8 @@ px4_add_module(
 	STACK_MAIN 2000
 	SRCS
 		markdw1000driver.cpp
+		testFunctions.cpp
+		rangingExample.cpp
 		DW1000.cpp
 		DW1000Device.cpp
 		DW1000Time.cpp

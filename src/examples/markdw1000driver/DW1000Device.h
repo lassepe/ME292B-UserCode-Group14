@@ -21,6 +21,7 @@
  * @todo complete this class
  */
 
+#pragma once
 
 #define INACTIVITY_TIME 1000
 

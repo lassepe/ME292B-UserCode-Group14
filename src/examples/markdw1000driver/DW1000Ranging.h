@@ -26,6 +26,8 @@
  * - use enums instead of preprocessor constants
  */
 
+#pragma once
+
 #include <systemlib/visibility.h>
 
 #include "DW1000.h"
@@ -33,36 +35,6 @@
 #include "DW1000Device.h" 
 #include "DW1000Mac.h"
 
-// messages used in the ranging protocol
-#define POLL 0
-#define POLL_ACK 1
-#define RANGE 2
-#define RANGE_REPORT 3
-#define RANGE_FAILED 255
-#define BLINK 4
-#define RANGING_INIT 5
-
-#define LEN_DATA 90
-
-//Max devices we put in the networkDevices array ! Each DW1000Device is 74 Bytes in SRAM memory for now.
-#define MAX_DEVICES 4
-
-//Default Pin for module:
-#define DEFAULT_RST_PIN 9
-#define DEFAULT_SPI_SS_PIN 10
-
-//Default value
-//in ms
-#define DEFAULT_RESET_PERIOD 200
-//in us
-#define DEFAULT_REPLY_DELAY_TIME 7000
-
-//sketch type (anchor or tag)
-#define TAG 0
-#define ANCHOR 1
-
-//default timer delay
-#define DEFAULT_TIMER_DELAY 80
 
 //debug mode
 #ifndef DEBUG
@@ -72,12 +44,36 @@
 
 class __EXPORT DW1000RangingClass {
 public:
+// messages used in the ranging protocol
+	enum MessageType{
+        POLL = 0,
+        POLL_ACK = 1,
+        RANGE = 2,
+        RANGE_REPORT = 3,
+        RANGE_FAILED = 255,
+        BLINK = 4,
+        RANGING_INIT = 5,
+	};
+
+	enum {
+        LEN_DATA_BUFFER = 90,
+        MAX_DEVICES = 4,//Max devices we put in the networkDevices array ! Each DW1000Device is 74 Bytes in SRAM memory for now.
+        //Default value
+        DEFAULT_RESET_PERIOD = 200,//in ms
+        DEFAULT_REPLY_DELAY_TIME = 7000,//in us
+
+        TAG = 0,//sketch type (anchor or tag)
+        ANCHOR = 1,//sketch type (anchor or tag)
+
+        DEFAULT_TIMER_DELAY = 80,//default timer delay
+	};
+
 	//variables
 	// data buffer
-	static uint8_t data[LEN_DATA];
+	static uint8_t data[LEN_DATA_BUFFER];
 	
 	//initialisation
-	static void    initCommunication(uint8_t myRST = DEFAULT_RST_PIN, uint8_t mySS = DEFAULT_SPI_SS_PIN, uint8_t myIRQ = 2);
+	static void    initCommunication();
 	static void    configureNetwork(uint16_t deviceAddress, uint16_t networkId, const uint8_t mode[]);
 	static void    generalStart();
 	static void    startAsAnchor(char address[], const uint8_t mode[]);
@@ -150,9 +146,6 @@ private:
 	static volatile bool _receivedAck;
 	// protocol error state
 	static bool          _protocolFailed;
-	// reset line to the chip
-	static uint8_t     _RST;
-	static uint8_t     _SS;
 	// watchdog and reset period
 	static uint32_t    _lastActivity;
 	static uint32_t    _resetPeriod;

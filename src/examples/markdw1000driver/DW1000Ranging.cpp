@@ -65,10 +65,7 @@ int16_t            DW1000RangingClass::counterForBlink = 0; // TODO 8 bit?
 
 
 // data buffer
-uint8_t          DW1000RangingClass::data[LEN_DATA];
-// reset line to the chip
-uint8_t   DW1000RangingClass::_RST;
-uint8_t   DW1000RangingClass::_SS;
+uint8_t          DW1000RangingClass::data[LEN_DATA_BUFFER];
 // watchdog and reset period
 uint32_t  DW1000RangingClass::_lastActivity;
 uint32_t  DW1000RangingClass::_resetPeriod;
@@ -89,10 +86,7 @@ void (* DW1000RangingClass::_handleInactiveDevice)(DW1000Device*) = 0;
  * #### Init and end #######################################################
  * ######################################################################### */
 
-void DW1000RangingClass::initCommunication(uint8_t myRST, uint8_t mySS, uint8_t myIRQ) {
-	// reset line to the chip
-	_RST              = myRST;
-	_SS               = mySS;
+void DW1000RangingClass::initCommunication() {
 	_resetPeriod      = DEFAULT_RESET_PERIOD;
 	// reply times (same on both sides for symm. ranging)
 	_replyDelayTimeUS = DEFAULT_REPLY_DELAY_TIME;
@@ -127,8 +121,6 @@ void DW1000RangingClass::generalStart() {
 		// DEBUG monitoring
 		printf("DW1000-arduino\n");
 		// initialize the driver
-		
-		
 		printf("configuration..\n");
 		// DEBUG chip info and registers pretty printed
 		char msg[90];
@@ -438,7 +430,7 @@ void DW1000RangingClass::loop() {
 		
 		//we read the datas from the modules:
 		// get message and parse
-		DW1000.getData(data, LEN_DATA);
+		DW1000.getData(data, LEN_DATA_BUFFER );
 		
 		int messageType = detectMessageType(data);
 		
@@ -753,14 +745,14 @@ void DW1000RangingClass::transmitInit() {
 
 
 void DW1000RangingClass::transmit(uint8_t datas[]) {
-	DW1000.setData(datas, LEN_DATA);
+	DW1000.setData(datas, LEN_DATA_BUFFER);
 	DW1000.startTransmit();
 }
 
 
 void DW1000RangingClass::transmit(uint8_t datas[], DW1000Time time) {
 	DW1000.setDelay(time);
-	DW1000.setData(data, LEN_DATA);
+	DW1000.setData(data, LEN_DATA_BUFFER);
 	DW1000.startTransmit();
 }
 

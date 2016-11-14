@@ -1655,7 +1655,6 @@ void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint1
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 	spi1->ops->exchange(spi1, spiTxBuffer, spiRxBuffer, headerLen+data_size);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
-    memcpy(data, spiRxBuffer+headerLen, data_size);
 
 	usleep(5);//delayMicroseconds(5);
 }
@@ -1744,7 +1743,7 @@ void DW1000Class::enableAllLeds(void)
 
   // Enable LED blinking and set the rate
   dat[3] = 0x00;
-  dat[2] = 0x84;
+  dat[2] = 0x00;
   dat[1] = 0x01;
   dat[0] = 0x10;
 //  reg = 0x00 00 01 10ul;

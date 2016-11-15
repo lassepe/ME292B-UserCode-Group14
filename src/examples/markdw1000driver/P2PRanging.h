@@ -39,8 +39,11 @@ public:
 		return _status;
 	}
 
-	static void rangingTagLoop();
-	static void rangingAnchorLoop();
+	void setAutoTransmitPoll(bool in){
+        autoTxPoll = in;
+	}
+
+	static void runLoop();
 
 private:
 	static void noteActivity()
@@ -94,5 +97,6 @@ private:
 	static uint16_t successRangingCount;
 	static uint32_t rangingCountPeriod;
 	static float samplingRate;
+	static bool autoTxPoll;
 };
 

@@ -22,6 +22,7 @@ uint16_t P2PRanging::replyDelayTime_us;
 uint16_t P2PRanging::successRangingCount;
 uint32_t P2PRanging::rangingCountPeriod;
 float P2PRanging::samplingRate;
+bool P2PRanging::autoTxPoll;
 
 
 P2PRanging::P2PRanging()
@@ -42,6 +43,7 @@ P2PRanging::P2PRanging()
 	samplingRate = 0;
     lastActivityTime_ms = 0;
 
+    autoTxPoll = false;
 }
 
 
@@ -88,6 +90,7 @@ void P2PRanging::handleReceived() {
 }
 
 void P2PRanging::transmitPoll() {
+	printf("Sending <POLL> message\n");
     DW1000.newTransmit();
     DW1000.setDefaults();
     data[0] = POLL;
@@ -151,12 +154,17 @@ void P2PRanging::rangingReceiver() {
     DW1000.startReceive();
 }
 
-void P2PRanging::rangingTagLoop() {
+
+
+void P2PRanging::runLoop() {
     if (!sentAck && !receivedAck) {
         // check if inactive
         if (DW1000Device::getTimeMillis() - lastActivityTime_ms > resetPeriod_ms) {
             resetInactive();
-            transmitPoll();//mwm todo: We should have a nicer way of deciding to initiate a conversation...
+            if(autoTxPoll)
+            {
+                transmitPoll();//mwm todo: We should have a nicer way of deciding to initiate a conversation...
+            }
         }
         return;
     }
@@ -166,12 +174,18 @@ void P2PRanging::rangingTagLoop() {
         uint8_t msgId = data[0];
         if (msgId == POLL) {
             DW1000.getTransmitTimestamp(timePollSent);
-            //Serial.print("Sent POLL @ "); Serial.println(timePollSent.getAsFloat());
+            noteActivity();
+        }
+        else if (msgId == POLL_ACK) {
+            DW1000.getTransmitTimestamp(timePollAckSent);
+            noteActivity();
         } else if (msgId == RANGE) {
             DW1000.getTransmitTimestamp(timeRangeSent);
             noteActivity();
         }
+        //else?
     }
+
     if (receivedAck) {
         receivedAck = false;
         // get message and parse
@@ -179,12 +193,22 @@ void P2PRanging::rangingTagLoop() {
         uint8_t msgId = data[0];
         if (msgId != expectedMsgId) {
             // unexpected message, start over again
-            //Serial.print("Received wrong message # "); Serial.println(msgId);
             expectedMsgId = POLL_ACK;
-            transmitPoll();
+            if(autoTxPoll){
+            	transmitPoll();
+            }
             return;
         }
-        if (msgId == POLL_ACK) {
+
+        if (msgId == POLL) {
+            // on POLL we (re-)start, so no protocol failure
+            protocolFailed = false;
+            DW1000.getReceiveTimestamp(timePollReceived);
+            expectedMsgId = RANGE;
+            transmitPollAck();
+            noteActivity();
+        }
+        else if (msgId == POLL_ACK) {
             DW1000.getReceiveTimestamp(timePollAckReceived);
             expectedMsgId = RANGE_REPORT;
             transmitRange();
@@ -194,48 +218,6 @@ void P2PRanging::rangingTagLoop() {
             float curRange;
             memcpy(&curRange, data + 1, 4);
             transmitPoll();
-            noteActivity();
-        } else if (msgId == RANGE_FAILED) {
-            expectedMsgId = POLL_ACK;
-            transmitPoll();
-            noteActivity();
-        }
-    }
-}
-
-void P2PRanging::rangingAnchorLoop() {
-    int32_t curMillis = DW1000Device::getTimeMillis();
-    if (!sentAck && !receivedAck) {
-        // check if inactive
-        if (curMillis - lastActivityTime_ms > resetPeriod_ms) {
-        	resetInactive();
-        }
-        return;
-    }
-    // continue on any success confirmation
-    if (sentAck) {
-        sentAck = false;
-        uint8_t msgId = data[0];
-        if (msgId == POLL_ACK) {
-            DW1000.getTransmitTimestamp(timePollAckSent);
-            noteActivity();
-        }
-    }
-    if (receivedAck) {
-        receivedAck = false;
-        // get message and parse
-        DW1000.getData(data, LEN_DATA);
-        uint8_t msgId = data[0];
-        if (msgId != expectedMsgId) {
-            // unexpected message, start over again (except if already POLL)
-            protocolFailed = true;
-        }
-        if (msgId == POLL) {
-            // on POLL we (re-)start, so no protocol failure
-            protocolFailed = false;
-            DW1000.getReceiveTimestamp(timePollReceived);
-            expectedMsgId = RANGE;
-            transmitPollAck();
             noteActivity();
         }
         else if (msgId == RANGE) {
@@ -255,9 +237,10 @@ void P2PRanging::rangingAnchorLoop() {
                 avgDistanceCount ++;
                 // update sampling rate (each second)
                 successRangingCount++;
-                if (curMillis - rangingCountPeriod > 1000) {
-                    samplingRate = (1000.0f * successRangingCount) / (curMillis - rangingCountPeriod);
-                    rangingCountPeriod = curMillis;
+                int32_t curTime_ms = DW1000Device::getTimeMillis();
+                if (curTime_ms - rangingCountPeriod > 1000) {
+                    samplingRate = (1000.0f * successRangingCount) / (curTime_ms - rangingCountPeriod);
+                    rangingCountPeriod = curTime_ms;
                     successRangingCount = 0;
                     printf("Range: %dmm\n", int(1000.f*distance+0.5f));
                     printf("Avg. range: %dmm, over %d\n", int(1000.f*avgDistance+0.5f)/avgDistanceCount, avgDistanceCount);
@@ -272,10 +255,13 @@ void P2PRanging::rangingAnchorLoop() {
             }
 
             noteActivity();
+        } else if (msgId == RANGE_FAILED) {
+            expectedMsgId = POLL_ACK;
+            transmitPoll();
+            noteActivity();
         }
     }
 }
-
 
 /*
  * RANGING ALGORITHMS

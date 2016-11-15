@@ -37,7 +37,7 @@ px4_add_module(
 	SRCS
 		markdw1000driver.cpp
 		testFunctions.cpp
-		rangingExample.cpp
+		P2PRanging.cpp
 		DW1000.cpp
 		DW1000Device.cpp
 		DW1000Time.cpp

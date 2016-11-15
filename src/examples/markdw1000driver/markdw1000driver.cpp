@@ -55,24 +55,25 @@
 #include "DW1000Device.h"
 
 #include "testFunctions.hpp"
-#include "rangingExample.h"
+
+#include "P2PRanging.h"
 
 extern "C" __EXPORT int mtest_main(int argc, char *argv[]);
 
 void usage();
 
-void usage(){
-		printf("Need at least one argument:\n");
-		printf("\tA -> start ranging Anchor polished (sink state)\n");
-		printf("\tT -> start ranging Tag polished (sink state)\n");
-		printf("\t1 -> start ranging Anchor (sink state)\n");
-		printf("\t2 -> start ranging Tag (sink state)\n");
+void usage()
+{
+	printf("Need at least one argument:\n");
+	printf("\tA -> start ranging Anchor polished (sink state)\n");
+	printf("\tT -> start ranging Tag polished (sink state)\n");
+	printf("\t1 -> start ranging Anchor (sink state)\n");
+	printf("\t2 -> start ranging Tag (sink state)\n");
 
-		printf("\tc -> basic connectivity test\n");
-		printf("\ts -> basic sender\n");
-		printf("\tr -> basic receiver\n");
-		printf("\tt -> Timing test\n");
-
+	printf("\tc -> basic connectivity test\n");
+	printf("\ts -> basic sender\n");
+	printf("\tr -> basic receiver\n");
+	printf("\tt -> Timing test\n");
 
 }
 
@@ -81,45 +82,59 @@ void newDevice(DW1000Device* device);
 void inactiveDevice(DW1000Device* device);
 void newBlink(DW1000Device* device);
 
-void newRange() {
-  printf("from: %d\n", int(DW1000Ranging.getDistantDevice()->getShortAddress()));
-  printf("\t Range: %dmm\n", int(1000*DW1000Ranging.getDistantDevice()->getRange()));
-  printf("\t RX power: %f dBm\n", double(DW1000Ranging.getDistantDevice()->getRXPower()));
+void newRange()
+{
+	printf("from: %d\n",
+			int(DW1000Ranging.getDistantDevice()->getShortAddress()));
+	printf("\t Range: %dmm\n",
+			int(1000 * DW1000Ranging.getDistantDevice()->getRange()));
+	printf("\t RX power: %f dBm\n",
+			double(DW1000Ranging.getDistantDevice()->getRXPower()));
 }
 
-void newDevice(DW1000Device* device) {
-  printf("ranging init; 1 device added ! -> ");
-  printf(" short: %d\n", int(device->getShortAddress()));
+void newDevice(DW1000Device* device)
+{
+	printf("ranging init; 1 device added ! -> ");
+	printf(" short: %d\n", int(device->getShortAddress()));
 }
 
-void inactiveDevice(DW1000Device* device) {
-  printf("delete inactive device: %d\n", int(device->getShortAddress()));
+void inactiveDevice(DW1000Device* device)
+{
+	printf("delete inactive device: %d\n", int(device->getShortAddress()));
 }
 
-void newBlink(DW1000Device* device) {
-  printf("blink; 1 device added ! -> ");
-  printf(" short: %d\n", int(device->getShortAddress()));
+void newBlink(DW1000Device* device)
+{
+	printf("blink; 1 device added ! -> ");
+	printf(" short: %d\n", int(device->getShortAddress()));
 }
 
-int mtest_main(int argc, char *argv[]) {
-	if(argc <= 1){
+int mtest_main(int argc, char *argv[])
+{
+	if (argc <= 1)
+	{
 		usage();
 		return 0;
 	}
-	if(!strcmp(argv[1], "t")){
-        return markTestTimestampTest();
+	if (!strcmp(argv[1], "t"))
+	{
+		return markTestTimestampTest();
 	}
-	if(!strcmp(argv[1], "c")){
-        return basicConnectivityTest();
+	if (!strcmp(argv[1], "c"))
+	{
+		return basicConnectivityTest();
 	}
-	if(!strcmp(argv[1], "r")){
-        return basicReceiver();
+	if (!strcmp(argv[1], "r"))
+	{
+		return basicReceiver();
 	}
-	if(!strcmp(argv[1], "s")){
-        return basicSender();
+	if (!strcmp(argv[1], "s"))
+	{
+		return basicSender();
 	}
 
-	if(!strcmp(argv[1], "A")){
+	if (!strcmp(argv[1], "A"))
+	{
 		DW1000Ranging.initCommunication();
 
 		DW1000Ranging.attachNewRange(newRange);
@@ -130,15 +145,17 @@ int mtest_main(int argc, char *argv[]) {
 		DW1000Ranging.startAsAnchor("82:17:5B:D5:A9:9A:E2:9C",
 				DW1000.MODE_LONGDATA_RANGE_ACCURACY);
 
-        printf("Starting loop...\n");
-        for(;;){
-        	DW1000Ranging.loop();
-        	usleep(1000);//approx. 1ms
-        }
-        return 0;//never get here...
+		printf("Starting loop...\n");
+		for (;;)
+		{
+			DW1000Ranging.loop();
+			usleep(1000); //approx. 1ms
+		}
+		return 0; //never get here...
 	}
 
-	if(!strcmp(argv[1], "T")){
+	if (!strcmp(argv[1], "T"))
+	{
 		DW1000Ranging.initCommunication();
 
 		DW1000Ranging.attachNewRange(newRange);
@@ -149,34 +166,54 @@ int mtest_main(int argc, char *argv[]) {
 		DW1000Ranging.startAsTag("7D:00:22:EA:82:60:3B:9C",
 				DW1000.MODE_LONGDATA_RANGE_ACCURACY);
 
-        printf("Starting loop...\n");
-        for(;;){
-        	DW1000Ranging.loop();
-        	usleep(1000);//approx. 1ms
-        }
-        return 0;//never get here...
+		printf("Starting loop...\n");
+		for (;;)
+		{
+			DW1000Ranging.loop();
+			usleep(1000); //approx. 1ms
+		}
+		return 0; //never get here...
 	}
 
-	if(!strcmp(argv[1], "1")){
-        rangingAnchorSetup();
-        printf("Starting loop...\n");
-        for(;;){
-        	rangingAnchorLoop();
-        	usleep(1000);//approx. 1ms
-        }
-        return 0;
+	if (!strcmp(argv[1], "1"))
+	{
+        printf("### P2P-ranging ###\n");
+		static P2PRanging p2pRanging;
+
+		if (p2pRanging.Initialize())
+		{
+			printf("Init failed, returning.");
+			return -1;
+		}
+
+		printf("Starting loop as anchor...\n");
+		for (;;)
+		{
+			p2pRanging.rangingAnchorLoop();
+			usleep(1000); //approx. 1ms
+		}
+		return 0;
 	}
 
-	if(!strcmp(argv[1], "2")){
-        rangingTagSetup();
-        printf("Starting loop...\n");
-        for(;;){
-        	rangingTagLoop();
-        	usleep(1000);//approx. 1ms
-        }
-        return 0;
-	}
+	if (!strcmp(argv[1], "2"))
+	{
+        printf("### P2P-ranging ###\n");
+		static P2PRanging p2pRanging;
 
+		if (p2pRanging.Initialize())
+		{
+			printf("Init failed, returning.");
+			return -1;
+		}
+
+		printf("Starting loop as tag...\n");
+		for (;;)
+		{
+			p2pRanging.rangingTagLoop();
+			usleep(1000); //approx. 1ms
+		}
+		return 0;
+	}
 
 	usage();
 	return -1;

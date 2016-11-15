@@ -156,15 +156,6 @@ void DW1000Time::getTimestamp(uint8_t data[]) const {
 	}
 }
 
-/**
- * Return real time in micro seconds
- * @return time in micro seconds
- * @deprecated use getAsMicroSeconds()
- */
-float DW1000Time::getAsFloat() const {
-	//return fmod((float)_timestamp, TIME_OVERFLOW)*TIME_RES;
-	return getAsMicroSeconds();
-}
 
 /**
  * Return real time in micro seconds

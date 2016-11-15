@@ -39,8 +39,9 @@ public:
 		return _status;
 	}
 
-	void setAutoTransmitPoll(bool in){
-        autoTxPoll = in;
+	void setAutoTransmitPoll(bool in)
+	{
+		_autoTxPoll = in;
 	}
 
 	static void runLoop();
@@ -48,7 +49,7 @@ public:
 private:
 	static void noteActivity()
 	{
-		lastActivityTime_ms = DW1000Device::getTimeMillis();
+		_lastActivityTime_ms = DW1000Device::getTimeMillis();
 	}
 
 	static void resetInactive();
@@ -66,37 +67,37 @@ private:
 	static void computeRangeAsymmetric();
 	static void computeRangeSymmetric();
 
-	static void rangingReceiver();//->setUpAsReceiver();
+	static void rangingReceiver(); //->setUpAsReceiver();
 
 	static volatile Status _status;
 
-	static volatile MessageTypes expectedMsgId;
+	static volatile MessageTypes _expectedMsgId;
 
 	// message sent/received state
-	static volatile bool sentAck;
-	static volatile bool receivedAck;
+	static volatile bool _sentAck;
+	static volatile bool _receivedAck;
 	// protocol error state
-	static bool protocolFailed;
+	static bool _protocolFailed;
 	// timestamps to remember
-	static DW1000Time timePollSent;
-	static DW1000Time timePollReceived;
-	static DW1000Time timePollAckSent;
-	static DW1000Time timePollAckReceived;
-	static DW1000Time timeRangeSent;
-	static DW1000Time timeRangeReceived;
+	static DW1000Time _timePollSent;
+	static DW1000Time _timePollReceived;
+	static DW1000Time _timePollAckSent;
+	static DW1000Time _timePollAckReceived;
+	static DW1000Time _timeRangeSent;
+	static DW1000Time _timeRangeReceived;
 	// last computed range/time
-	static DW1000Time timeComputedRange;
+	static DW1000Time _timeComputedRange;
 	// data buffer
-	static uint8_t data[LEN_DATA];
+	static uint8_t _data[LEN_DATA];
 	// watchdog and reset period
-	static uint32_t lastActivityTime_ms;
-	static uint32_t resetPeriod_ms;
+	static uint32_t _lastActivityTime_ms;
+	static uint32_t _resetPeriod_ms;
 	// reply times (same on both sides for symm. ranging)
-	static uint16_t replyDelayTime_us;
+	static uint16_t _replyDelayTime_us;
 	// ranging counter (per second)
-	static uint16_t successRangingCount;
-	static uint32_t rangingCountPeriod;
-	static float samplingRate;
-	static bool autoTxPoll;
+	static uint16_t _successRangingCount;
+	static uint32_t _rangingCountPeriod;
+	static float _samplingRate;
+	static bool _autoTxPoll;
 };
 

@@ -30,6 +30,12 @@
 #include "DW1000Ranging.h"
 #include "DW1000Device.h"
 
+//debug mode
+#ifndef DEBUG
+#define DEBUG false
+#endif
+
+
 DW1000RangingClass DW1000Ranging;
 
 
@@ -155,7 +161,7 @@ void DW1000RangingClass::generalStart() {
 }
 
 
-void DW1000RangingClass::startAsAnchor(char address[], const uint8_t mode[]) {
+void DW1000RangingClass::startAsAnchor(const char address[], const uint8_t mode[]) {
 	//save the address
 	DW1000.convertToByte(address, _currentAddress);
 	//write the address on the DW1000 chip
@@ -183,7 +189,7 @@ void DW1000RangingClass::startAsAnchor(char address[], const uint8_t mode[]) {
 	
 }
 
-void DW1000RangingClass::startAsTag(char address[], const uint8_t mode[]) {
+void DW1000RangingClass::startAsTag(const char address[], const uint8_t mode[]) {
 	//save the address
 	DW1000.convertToByte(address, _currentAddress);
 	//write the address on the DW1000 chip

@@ -57,18 +57,18 @@ uint8_t DW1000Class::_vmeas3v3 = 0;
 uint8_t DW1000Class::_tmeas23C = 0;
 
 // driver internal state
-uint8_t       DW1000Class::_extendedFrameLength = FRAME_LENGTH_NORMAL;
-uint8_t       DW1000Class::_pacSize             = PAC_SIZE_8;
-uint8_t       DW1000Class::_pulseFrequency      = TX_PULSE_FREQ_16MHZ;
-uint8_t       DW1000Class::_dataRate            = TRX_RATE_6800KBPS;
-uint8_t       DW1000Class::_preambleLength      = TX_PREAMBLE_LEN_128;
-uint8_t       DW1000Class::_preambleCode        = PREAMBLE_CODE_16MHZ_4;
-uint8_t       DW1000Class::_channel             = CHANNEL_5;
+uint8_t    DW1000Class::_extendedFrameLength = FRAME_LENGTH_NORMAL;
+uint8_t    DW1000Class::_pacSize             = PAC_SIZE_8;
+uint8_t    DW1000Class::_pulseFrequency      = TX_PULSE_FREQ_16MHZ;
+uint8_t    DW1000Class::_dataRate            = TRX_RATE_6800KBPS;
+uint8_t    DW1000Class::_preambleLength      = TX_PREAMBLE_LEN_128;
+uint8_t    DW1000Class::_preambleCode        = PREAMBLE_CODE_16MHZ_4;
+uint8_t    DW1000Class::_channel             = CHANNEL_5;
 DW1000Time DW1000Class::_antennaDelay;
 bool       DW1000Class::_smartPower          = false;
 
-bool    DW1000Class::_frameCheck          = true;
-bool    DW1000Class::_permanentReceive    = false;
+bool       DW1000Class::_frameCheck          = true;
+bool       DW1000Class::_permanentReceive    = false;
 uint8_t    DW1000Class::_deviceMode          = IDLE_MODE; // TODO replace by enum
 
 // modes of operation
@@ -149,6 +149,15 @@ int DW1000Class::configure(){
 	readBytesOTP(0x009, buf_otp); // the stored 23C reading
 	_tmeas23C = buf_otp[0];
 
+	//test that we can communicate:
+	uint8_t data[LEN_DEV_ID];
+	readBytes(DEV_ID, NO_SUB, data, LEN_DEV_ID);
+	if(*((uint32_t*) data) != 0xDECA0130){
+//			data[3] != 0xDE || data[2] != 0xCA){
+		printf("[DW1000Class::configure] Cannot read chip correctly, aborting init.\n");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -193,7 +202,6 @@ int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 
 void DW1000Class::manageLDE() {
 	// transfer any ldo tune values
-	/*mwm bitcraze rem:
 	uint8_t ldoTune[LEN_OTP_RDAT];
 	readBytesOTP(0x04, ldoTune); // TODO #define
 	if(ldoTune[0] != 0) {
@@ -201,8 +209,6 @@ void DW1000Class::manageLDE() {
 	}
 	// tell the chip to load the LDE microcode
 	// TODO remove clock-related code (PMSC_CTRL) as handled separately
-	 *
-	 */
 	uint8_t pmscctrl0[LEN_PMSC_CTRL0];
 	uint8_t otpctrl[LEN_OTP_CTRL];
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
@@ -845,7 +851,7 @@ uint8_t DW1000Class::nibbleFromChar(char c) {
 	return 255;
 }
 
-void DW1000Class::convertToByte(char string[], uint8_t* bytes) {
+void DW1000Class::convertToByte(const char string[], uint8_t* bytes) {
 	uint8_t    eui_byte[LEN_EUI];
 	// we fill it with the char array under the form of "AA:FF:1C:...."
 	for(uint16_t i = 0; i < LEN_EUI; i++) {
@@ -869,13 +875,13 @@ void DW1000Class::getTempAndVbat(float& temp, float& vbat) {
 	temp = (sar_ltemp - _tmeas23C) * 1.14f + 23.0f;
 }
 
-void DW1000Class::setEUI(char eui[]) {
+void DW1000Class::setEUI(const char eui[]) {
 	uint8_t eui_byte[LEN_EUI];
 	convertToByte(eui, eui_byte);
 	setEUI(eui_byte);
 }
 
-void DW1000Class::setEUI(uint8_t eui[]) {
+void DW1000Class::setEUI(const uint8_t eui[]) {
 	//we reverse the address->
 	uint8_t    reverseEUI[8];
 	uint8_t     size = 8;
@@ -1021,9 +1027,15 @@ void DW1000Class::commitConfiguration() {
 	tune();
 	// TODO clean up code + antenna delay/calibration API
 	// TODO setter + check not larger two bytes integer
+#if 0
 	uint8_t antennaDelayBytes[LEN_STAMP];
-	writeValueToBytes(antennaDelayBytes, 16384, LEN_STAMP);
+	writeValueToBytes(antennaDelayBytes, 16384, LEN_STAMP);//magic number?
 	_antennaDelay.setTimestamp(antennaDelayBytes);
+#endif
+
+	uint8_t antennaDelayBytes[LEN_STAMP];
+	_antennaDelay.setTimestampFromDistance(154.445f/2.0f);
+	_antennaDelay.getTimestamp(antennaDelayBytes);
 	writeBytes(TX_ANTD, NO_SUB, antennaDelayBytes, LEN_TX_ANTD);
 	writeBytes(LDE_IF, LDE_RXANTD_SUB, antennaDelayBytes, LEN_LDE_RXANTD);
 }
@@ -1712,6 +1724,7 @@ void DW1000Class::getPrettyBytes(uint8_t cmd, uint16_t offset, char msgBuffer[],
 
 void DW1000Class::enableAllLeds(void)
 {
+	//copied from Bticraze implementation
 
   // Set all 4 GPIO in LED mode
   uint8_t dat[4];

@@ -36,12 +36,6 @@
 #include "DW1000Mac.h"
 
 
-//debug mode
-#ifndef DEBUG
-#define DEBUG false
-#endif
-
-
 class __EXPORT DW1000RangingClass {
 public:
 // messages used in the ranging protocol
@@ -56,7 +50,7 @@ public:
 	};
 
 	enum {
-        LEN_DATA_BUFFER = 90,
+        LEN_DATA_BUFFER = 20,
         MAX_DEVICES = 4,//Max devices we put in the networkDevices array ! Each DW1000Device is 74 Bytes in SRAM memory for now.
         //Default value
         DEFAULT_RESET_PERIOD = 200,//in ms
@@ -73,18 +67,18 @@ public:
 	static uint8_t data[LEN_DATA_BUFFER];
 	
 	//initialisation
-	static void    initCommunication();
-	static void    configureNetwork(uint16_t deviceAddress, uint16_t networkId, const uint8_t mode[]);
-	static void    generalStart();
-	static void    startAsAnchor(char address[], const uint8_t mode[]);
-	static void    startAsTag(char address[], const uint8_t mode[]);
-	static bool addNetworkDevices(DW1000Device* device, bool shortAddress);
-	static bool addNetworkDevices(DW1000Device* device);
-	static void    removeNetworkDevices(int16_t index);
+	static void  initCommunication();
+	static void  configureNetwork(uint16_t deviceAddress, uint16_t networkId, const uint8_t mode[]);
+	static void  generalStart();
+	static void  startAsAnchor(const char address[], const uint8_t mode[]);
+	static void  startAsTag(const char address[], const uint8_t mode[]);
+	static bool  addNetworkDevices(DW1000Device* device, bool shortAddress);
+	static bool  addNetworkDevices(DW1000Device* device);
+	static void  removeNetworkDevices(int16_t index);
 	
 	//setters
-	static void setReplyTime(uint16_t replyDelayTimeUs);
-	static void setResetPeriod(uint32_t resetPeriod);
+	static void  setReplyTime(uint16_t replyDelayTimeUs);
+	static void  setResetPeriod(uint32_t resetPeriod);
 	
 	//getters
 	static uint8_t* getCurrentAddress() { return _currentAddress; };

@@ -80,6 +80,7 @@ public:
 	void setTimestamp(int64_t value);
 	void setTimestamp(uint8_t data[]);
 	void setTimestamp(const DW1000Time& copy);
+	void setTimestampFromDistance(float dist);
 	
 	// real time in us
 	void setTime(float timeUs);
@@ -93,7 +94,6 @@ public:
 	float getAsFloat() const;
 	// getter, convert the timestamp to usual units
 	float getAsMicroSeconds() const;
-	//void getAsBytes(uint8_t data[]) const; // TODO check why it is here, is it old version of getTimestamp(uint8_t) ?
 	float getAsMeters() const;
 	
 	DW1000Time& wrap();

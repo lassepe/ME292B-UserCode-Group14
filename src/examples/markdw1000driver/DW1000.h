@@ -119,8 +119,8 @@ public:
 	static void setDeviceAddress(uint16_t val);
 	// TODO MAC and filters
 	
-	static void setEUI(char eui[]);
-	static void setEUI(uint8_t eui[]);
+	static void setEUI(const char eui[]);
+	static void setEUI(const uint8_t eui[]);
 	
 	/* ##### General device configuration ######################################## */
 	/** 
@@ -293,7 +293,7 @@ public:
 	
 	//convert from char to 4 bits (hexadecimal)
 	static uint8_t nibbleFromChar(char c);
-	static void convertToByte(char string[], uint8_t* eui_uint8_t);
+	static void convertToByte(const char string[], uint8_t* eui_uint8_t);
 	
 	// host-initiated reading of temperature and battery voltage
 	static void getTempAndVbat(float& temp, float& vbat);
@@ -358,12 +358,12 @@ public:
 	
 	/* pre-defined modes of operation (3 uint8_ts for data rate, pulse frequency and
 	preamble length). */
-	static constexpr uint8_t MODE_LONGDATA_RANGE_LOWPOWER[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_2048};
+	static constexpr uint8_t MODE_LONGDATA_RANGE_LOWPOWER[] = {TRX_RATE_110KBPS,  TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_2048};
 	static constexpr uint8_t MODE_SHORTDATA_FAST_LOWPOWER[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_128};
 	static constexpr uint8_t MODE_LONGDATA_FAST_LOWPOWER[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_16MHZ, TX_PREAMBLE_LEN_1024};
 	static constexpr uint8_t MODE_SHORTDATA_FAST_ACCURACY[] = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_128};
 	static constexpr uint8_t MODE_LONGDATA_FAST_ACCURACY[]  = {TRX_RATE_6800KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_1024};
-	static constexpr uint8_t MODE_LONGDATA_RANGE_ACCURACY[] = {TRX_RATE_110KBPS, TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_2048};
+	static constexpr uint8_t MODE_LONGDATA_RANGE_ACCURACY[] = {TRX_RATE_110KBPS,  TX_PULSE_FREQ_64MHZ, TX_PREAMBLE_LEN_2048};
 
 //private:
 		
@@ -391,14 +391,14 @@ public:
 	static uint8_t _networkAndAddress[LEN_PANADR];
 	
 	/* internal helper that guide tuning the chip. */
-	static bool    _smartPower;
-	static uint8_t       _extendedFrameLength;
-	static uint8_t       _preambleCode;
-	static uint8_t       _channel;
-	static uint8_t       _preambleLength;
-	static uint8_t       _pulseFrequency;
-	static uint8_t       _dataRate;
-	static uint8_t       _pacSize;
+	static bool       _smartPower;
+	static uint8_t    _extendedFrameLength;
+	static uint8_t    _preambleCode;
+	static uint8_t    _channel;
+	static uint8_t    _preambleLength;
+	static uint8_t    _pulseFrequency;
+	static uint8_t    _dataRate;
+	static uint8_t    _pacSize;
 	static DW1000Time _antennaDelay;
 	
 	/* internal helper to remember how to properly act. */

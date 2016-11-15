@@ -99,6 +99,14 @@ void DW1000Time::setTimestamp(uint8_t data[]) {
 }
 
 /**
+ * Set timestamp corresponding to a distance
+ * @param dist distance in [m]
+ */
+void DW1000Time::setTimestampFromDistance(float dist){
+	_timestamp = int64_t(dist*DISTANCE_OF_RADIO_INV);
+}
+
+/**
  * Set timestamp from other instance
  * @param copy instance where the timestamp should be copied
  */

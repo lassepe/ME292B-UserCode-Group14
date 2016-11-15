@@ -60,18 +60,18 @@ void computeRangeAsymmetric();
 void computeRangeSymmetric();
 void rangingReceiver();
 
-void rangingTagSetup() {
+int rangingTagSetup() {
     // DEBUG monitoring
     printf("### DW1000-ranging-tag ###\n");
     // initialize the driver
     DW1000.begin();
-    DW1000.configure();
+    if(DW1000.configure()) return -1;
     // general configuration
     DW1000.newConfiguration();
     DW1000.setDefaults();
     DW1000.setDeviceAddress(2);
     DW1000.setNetworkId(10);
-    DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_LOWPOWER);
+    DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_ACCURACY);//somewhat arbitrary mode
     DW1000.commitConfiguration();
     printf("Committed configuration ...\n");
 
@@ -88,19 +88,20 @@ void rangingTagSetup() {
     rangingReceiver();
     rangingTagTransmitPoll();
     noteActivity();
+    return 0;
 }
 
-void rangingAnchorSetup() {
+int rangingAnchorSetup() {
     printf("### DW1000-ranging-tag ###\n");
     // initialize the driver
     DW1000.begin();
-    DW1000.configure();
+    if(DW1000.configure()) return -1;
     // general configuration
     DW1000.newConfiguration();
     DW1000.setDefaults();
     DW1000.setDeviceAddress(1);
     DW1000.setNetworkId(10);
-    DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_LOWPOWER);
+    DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_ACCURACY);//somewhat arbitrary mode
     DW1000.commitConfiguration();
     printf("Committed configuration ...\n");
 
@@ -118,6 +119,7 @@ void rangingAnchorSetup() {
     noteActivity();
     // for first time ranging frequency computation
     rangingCountPeriod = DW1000Device::getTimeMillis();
+    return 0;
 }
 
 void noteActivity() {
@@ -355,18 +357,22 @@ void rangingAnchorLoop() {
                 computeRangeAsymmetric(); // CHOSEN RANGING ALGORITHM
                 transmitRangeReport(timeComputedRange.getAsMicroSeconds());
                 float distance = timeComputedRange.getAsMeters();
-                printf("Range: %dmm\n", int(1000.f*distance+0.5f));
-                printf("\t RX power: %f dDm\n", double(DW1000.getReceivePower()));
-                printf("\t Sampling: %d.%03d Hz\n", int(0.5f+samplingRate), int(0.5f+1000*samplingRate)%1000);
-                //Serial.print("FP power is [dBm]: "); Serial.print(DW1000.getFirstPathPower());
-                //Serial.print("RX power is [dBm]: "); Serial.println(DW1000.getReceivePower());
-                //Serial.print("Receive quality: "); Serial.println(DW1000.getReceiveQuality());
+                static float avgDistance = 0;
+                static int avgDistanceCount = 0;
+                avgDistance += distance;
+                avgDistanceCount ++;
                 // update sampling rate (each second)
                 successRangingCount++;
                 if (curMillis - rangingCountPeriod > 1000) {
                     samplingRate = (1000.0f * successRangingCount) / (curMillis - rangingCountPeriod);
                     rangingCountPeriod = curMillis;
                     successRangingCount = 0;
+                    printf("Range: %dmm\n", int(1000.f*distance+0.5f));
+                    printf("Avg. range: %dmm, over %d\n", int(1000.f*avgDistance+0.5f)/avgDistanceCount, avgDistanceCount);
+                    printf("\t RX power: %f dDm\n", double(DW1000.getReceivePower()));
+                    printf("\t Sampling: %d.%03d Hz\n", int(0.5f+samplingRate), int(0.5f+1000*samplingRate)%1000);
+                    avgDistance = 0;
+                    avgDistanceCount = 0;
                 }
             }
             else {

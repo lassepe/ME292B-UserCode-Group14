@@ -1,7 +1,7 @@
 #pragma once
 
-void rangingTagSetup();
-void rangingAnchorSetup();
+int rangingTagSetup();
+int rangingAnchorSetup();
 
 void rangingTagLoop();
 void rangingAnchorLoop();

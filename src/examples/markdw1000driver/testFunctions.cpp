@@ -22,7 +22,7 @@ void receiver();
 int basicConnectivityTest(void){
 	// initialize the driver
 	DW1000.begin();
-	DW1000.configure();
+	if(DW1000.configure()) return -1;
 	printf("DW1000 initialized ... \n");
 	// general configuration
 	DW1000.newConfiguration();
@@ -43,6 +43,10 @@ int basicConnectivityTest(void){
     printf("Network ID & Device Address: %s\n",msg);
     DW1000.getPrintableDeviceMode(msg);
     printf("Device mode: %s\n",msg);
+	printf("====================================\n");
+	float temp, vbat;
+	DW1000.getTempAndVbat(temp, vbat);
+	printf("Device temp = %dC, vbat = %dmV\n", int(temp+0.5f), int(1000*vbat+0.5f));
 	printf("====================================\n");
 
 	printf("Running LED test\n");
@@ -83,7 +87,7 @@ int basicSender(void){
 	// initialize the driver
 	DW1000.begin();
     printDeviceID();
-	DW1000.configure();
+	if(DW1000.configure()) return -1;
 
 	// general configuration
 	DW1000.newConfiguration();
@@ -158,7 +162,7 @@ int basicReceiver(void){
 	// initialize the driver
 	DW1000.begin();
     printDeviceID();
-	DW1000.configure();
+	if(DW1000.configure()) return -1;
 
 	// general configuration
 	DW1000.newConfiguration();
@@ -208,7 +212,7 @@ int markTestTimestampTest(void){
 	printf("DW1000 timestamp test\n");
 	// initialize the driver
 	DW1000.begin();
-	DW1000.configure();
+	if(DW1000.configure()) return -1;
 	printf("DW1000 initialized ... \n");
 	// general configuration
 	DW1000.newConfiguration();

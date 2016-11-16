@@ -68,7 +68,7 @@ void transmitter() {
   DW1000.newTransmit();
   DW1000.setDefaults();
   uint8_t msg[5] = "1234";
-  DW1000.setData(msg,5);
+  DW1000.setTxData(msg,5);
 
   // delay sending the message for the given amount
   DW1000Time deltaTime = DW1000Time(10, DW1000Time::MILLISECONDS);
@@ -190,7 +190,7 @@ int basicReceiver(void){
 		if (received) {
 			numReceived++;
 			// get data as string
-			DW1000.getData(message, MESSAGE_LEN);
+			DW1000.getRxData(message, MESSAGE_LEN);
 			printf("Received message ... #%d\n", int(numReceived));
 			printf("Data is ... <%s>\n", message);
 			printf("FP power is %f[dBm]\n", double(DW1000.getFirstPathPower()));
@@ -201,7 +201,7 @@ int basicReceiver(void){
 		if (error) {
 			printf("Error receiving a message\n");
 			error = false;
-			DW1000.getData(message, MESSAGE_LEN);
+			DW1000.getRxData(message, MESSAGE_LEN);
 			printf("Error data is <%s>\n", message);
 		}
 		usleep(1000);

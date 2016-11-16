@@ -196,10 +196,8 @@ public:
 	/* transmit and receive configuration. */
 	static DW1000Time   setDelay(const DW1000Time& delay);
 	static void         receivePermanently(bool val);
-	static void         setData(uint8_t data[], uint16_t n);
-	//mwm no string: static void         setData(const String& data);
-	static void         getData(uint8_t data[], uint16_t n);
-	//mwm no string: static void         getData(String& data);
+	static void         setTxData(uint8_t data[], uint16_t n);
+	static void         getRxData(uint8_t data[], uint16_t n);
 	static uint16_t     getDataLength();
 	static void         getTransmitTimestamp(DW1000Time& time);
 	static void         getReceiveTimestamp(DW1000Time& time);

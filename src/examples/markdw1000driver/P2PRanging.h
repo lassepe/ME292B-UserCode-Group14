@@ -64,10 +64,10 @@ private:
 
 	static volatile MessageTypes _expectedMsg;
 	static volatile MessageTypes _lastTxMsg;
-	static volatile MessageTypes _lastRxMsg;
+//	static volatile MessageTypes _lastRxMsg;
 
 	// message sent/received state
-	static volatile bool _sentAck;
+	static volatile bool _haveUnhandledSentMsg;
 	static volatile bool _haveUnhandledReceivedMsg;
 	// protocol error state
 	static volatile bool _protocolFailed;

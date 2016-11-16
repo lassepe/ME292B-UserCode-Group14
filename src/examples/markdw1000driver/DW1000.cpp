@@ -1198,7 +1198,7 @@ void DW1000Class::setDefaults() {
 	}
 }
 
-void DW1000Class::setData(uint8_t data[], uint16_t n) {
+void DW1000Class::setTxData(uint8_t data[], uint16_t n) {
 	if(_frameCheck) {
 		n += 2; // two bytes CRC-16
 	}
@@ -1214,15 +1214,6 @@ void DW1000Class::setData(uint8_t data[], uint16_t n) {
 	_txfctrl[1] &= 0xE0;
 	_txfctrl[1] |= (uint8_t)((n >> 8) & 0x03);  // 2 added bits if extended length
 }
-
-/*mwm no string void DW1000Class::setData(const String& data) {
-	uint16_t n = data.length()+1;
-	uint8_t* dataBytes = (uint8_t*)malloc(n);
-	data.getBytes(dataBytes, n);
-	setData(dataBytes, n);
-	free(dataBytes);
-}
-*/
 
 // TODO reorder
 uint16_t DW1000Class::getDataLength() {
@@ -1242,7 +1233,7 @@ uint16_t DW1000Class::getDataLength() {
 	return len;
 }
 
-void DW1000Class::getData(uint8_t data[], uint16_t n) {
+void DW1000Class::getRxData(uint8_t data[], uint16_t n) {
 	if(n <= 0) {
 		return;
 	}

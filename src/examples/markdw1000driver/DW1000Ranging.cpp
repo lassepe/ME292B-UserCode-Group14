@@ -438,7 +438,7 @@ void DW1000RangingClass::loop() {
 		
 		//we read the datas from the modules:
 		// get message and parse
-		DW1000.getData(data, LEN_DATA_BUFFER );
+		DW1000.getRxData(data, LEN_DATA_BUFFER );
 		
 		int messageType = detectMessageType(data);
 		
@@ -753,14 +753,14 @@ void DW1000RangingClass::transmitInit() {
 
 
 void DW1000RangingClass::transmit(uint8_t datas[]) {
-	DW1000.setData(datas, LEN_DATA_BUFFER);
+	DW1000.setTxData(datas, LEN_DATA_BUFFER);
 	DW1000.startTransmit();
 }
 
 
 void DW1000RangingClass::transmit(uint8_t datas[], DW1000Time time) {
 	DW1000.setDelay(time);
-	DW1000.setData(data, LEN_DATA_BUFFER);
+	DW1000.setTxData(data, LEN_DATA_BUFFER);
 	DW1000.startTransmit();
 }
 

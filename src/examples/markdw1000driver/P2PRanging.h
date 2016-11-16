@@ -8,11 +8,11 @@ class P2PRanging
 public:
 	enum MessageTypes
 	{
-		POLL = 0, //initiate the ranging exchange A->B.
-		POLL_ACK = 1, //acknowledge receipt of "POLL", B->A
-		RANGE = 2, //Third message in exchange, A->B
-		RANGE_REPORT = 3, //Computed range, B->A
-		RANGE_FAILED = 255, //exchange failed.
+		MSG_RANGING_INIT = 0, //initiate the ranging exchange A->B.
+		MSG_RANGING_REPLY1 = 1, //acknowledge receipt of "MSG_RANGING_INIT", B->A
+		MSG_RANGING_REPLY2 = 2, //Third message in exchange, A->B
+		MSG_RANGING_REPORT = 3, //Computed range, B->A
+		MSG_RANGING_FAILED = 255, //exchange failed.
 	};
 
 	enum
@@ -29,9 +29,9 @@ public:
 	static void LoopFunction(void);
 
 
-	void setAutoTransmitPoll(bool in)
+	void setAutoTransmitRangingInit(bool in)
 	{
-		_autoTxPoll = in;
+		_autoTxRangingInit = in;
 	}
 
 	static void runLoop();
@@ -48,8 +48,8 @@ private:
 	static void handleReceived();
 
 	//the four message types
-	static void transmitPoll();
-	static void transmitPollAck();
+	static void transmitRangingInit();
+	static void transmitRangingReply1();
 	static void transmitRange();
 	static void transmitRangeReport(const float curRange);
 	static void transmitRangeFailed();
@@ -67,12 +67,12 @@ private:
 	// protocol error state
 	static bool _protocolFailed;
 	// timestamps to remember
-	static DW1000Time _timePollSent;
-	static DW1000Time _timePollReceived;
-	static DW1000Time _timePollAckSent;
-	static DW1000Time _timePollAckReceived;
-	static DW1000Time _timeRangeSent;
-	static DW1000Time _timeRangeReceived;
+	static DW1000Time _timeRangingInitSent;
+	static DW1000Time _timeRangingInitReceived;
+	static DW1000Time _timeRangingReply1Sent;
+	static DW1000Time _timeRangingReply1Received;
+	static DW1000Time _timeRangeReportSent;
+	static DW1000Time _timeRangeReportReceived;
 	// last computed range/time
 	static DW1000Time _timeComputedRange;
 	// data buffer
@@ -86,6 +86,6 @@ private:
 	static uint16_t _successRangingCount;
 	static uint32_t _rangingCountPeriod;
 	static float _samplingRate;
-	static bool _autoTxPoll;
+	static bool _autoTxRangingInit;
 };
 

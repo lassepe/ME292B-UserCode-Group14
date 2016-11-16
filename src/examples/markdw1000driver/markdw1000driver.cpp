@@ -101,7 +101,7 @@ int mtest_main(int argc, char *argv[])
 			return -1;
 		}
 
-		p2pRanging.setAutoTransmitPoll(false);
+		p2pRanging.setAutoTransmitRangingInit(false);
 		printf("Starting loop as anchor...\n");
 		for (;;)
 		{
@@ -122,7 +122,7 @@ int mtest_main(int argc, char *argv[])
 			return -1;
 		}
 
-		p2pRanging.setAutoTransmitPoll(true);
+		p2pRanging.setAutoTransmitRangingInit(true);
 		printf("Starting loop as tag...\n");
 		for (;;)
 		{

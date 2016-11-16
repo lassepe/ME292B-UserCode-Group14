@@ -19,7 +19,8 @@ DW1000Time P2PRanging::_timeRangingReply1Received;
 DW1000Time P2PRanging::_timeRangingReply2Sent;
 DW1000Time P2PRanging::_timeRangingReply2Received;
 DW1000Time P2PRanging::_timeComputedRange;
-uint8_t P2PRanging::_data[P2PRanging::LEN_DATA];
+uint8_t P2PRanging::_rxData[P2PRanging::LEN_DATA];
+uint8_t P2PRanging::_txData[P2PRanging::LEN_DATA];
 volatile uint32_t P2PRanging::_lastActivityTime_ms;
 uint32_t P2PRanging::_resetPeriod_ms;
 uint16_t P2PRanging::_replyDelayTime_us;
@@ -27,6 +28,8 @@ uint16_t P2PRanging::_successRangingCount;
 uint32_t P2PRanging::_rangingCountPeriod;
 float P2PRanging::_samplingRate;
 bool P2PRanging::_autoTxRangingInit;
+uint8_t P2PRanging::_myId;
+uint8_t P2PRanging::_commPartnerId;
 
 perf_counter_t pc_TxCount(perf_alloc(PC_COUNT, "dw1000_txCount"));
 perf_counter_t pc_RxCount(perf_alloc(PC_COUNT, "dw1000_rxCount"));
@@ -35,6 +38,9 @@ perf_counter_t pc_count_RangingFailed(perf_alloc(PC_COUNT, "dw1000_rangingFailed
 perf_counter_t pc_count_RangingSucceeded(perf_alloc(PC_COUNT, "dw1000_rangingSucceeded"));
 perf_counter_t pc_count_unexpectedMsg(perf_alloc(PC_COUNT, "dw1000_unexpectedMsg"));
 
+perf_counter_t pc_time_wholeLoop(perf_alloc(PC_ELAPSED, "dw1000_spiReadData"));
+perf_counter_t pc_time_loopRxSec(perf_alloc(PC_ELAPSED, "dw1000_loopRx"));
+perf_counter_t pc_time_loopTxSec(perf_alloc(PC_ELAPSED, "dw1000_loopTx"));
 perf_counter_t pc_time_readData(perf_alloc(PC_ELAPSED, "dw1000_spiReadData"));
 
 //requester:
@@ -72,7 +78,7 @@ P2PRanging::P2PRanging()
 	_autoTxRangingInit = false;
 }
 
-int P2PRanging::Initialize()
+int P2PRanging::Initialize(uint8_t deviceId, uint16_t networkId)
 {
 	// initialize the driver
 	DW1000.begin();
@@ -81,8 +87,9 @@ int P2PRanging::Initialize()
 	// general configuration
 	DW1000.newConfiguration();
 	DW1000.setDefaults();
-	DW1000.setDeviceAddress(2);//mwm TODO magic number
-	DW1000.setNetworkId(10);//mwm TODO magic number
+	_myId = deviceId;
+	DW1000.setDeviceAddress(uint16_t(_myId));//mwm TODO magic number
+	DW1000.setNetworkId(networkId);//mwm TODO magic number
 	DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_ACCURACY); //somewhat arbitrary mode
 	DW1000.commitConfiguration();
 
@@ -129,8 +136,10 @@ void P2PRanging::transmitRangingInit()
 	DW1000.newTransmit();
 	DW1000.setDefaults();
 	_lastTxMsg = MSG_RANGING_INIT;
-	_data[0] = _lastTxMsg;
-	DW1000.setTxData(_data, LEN_DATA);
+	_txData[MSG_FIELD_TYPE] = _lastTxMsg;
+	_txData[MSG_FIELD_REQUESTER_ID] = _myId;
+	_txData[MSG_FIELD_RESPONDER_ID] = _commPartnerId;
+	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
 	_expectedMsg = MSG_RANGING_REPLY1;
 }
@@ -140,11 +149,13 @@ void P2PRanging::transmitRangingReply1()
 	DW1000.newTransmit();
 	DW1000.setDefaults();
 	_lastTxMsg = MSG_RANGING_REPLY1;
-	_data[0] = _lastTxMsg;
+	_txData[MSG_FIELD_TYPE] = _lastTxMsg;
+	_txData[MSG_FIELD_REQUESTER_ID] = _commPartnerId;
+	_txData[MSG_FIELD_RESPONDER_ID] = _myId;
 	// delay the same amount as ranging tag
 	DW1000Time deltaTime = DW1000Time(_replyDelayTime_us, DW1000Time::MICROSECONDS);
 	DW1000.setDelay(deltaTime);
-	DW1000.setTxData(_data, LEN_DATA);
+	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
 	_expectedMsg = MSG_RANGING_REPLY2;
 }
@@ -154,14 +165,16 @@ void P2PRanging::transmitRangingReply2()
 	DW1000.newTransmit();
 	DW1000.setDefaults();
 	_lastTxMsg = MSG_RANGING_REPLY2;
-	_data[0] = _lastTxMsg;
+	_txData[MSG_FIELD_TYPE] = _lastTxMsg;
+	_txData[MSG_FIELD_REQUESTER_ID] = _myId;
+	_txData[MSG_FIELD_RESPONDER_ID] = _commPartnerId;
 	// delay sending the message and remember expected future sent timestamp
 	DW1000Time deltaTime = DW1000Time(_replyDelayTime_us, DW1000Time::MICROSECONDS);
 	_timeRangingReply2Sent = DW1000.setDelay(deltaTime);
-	_timeRangingInitSent.getTimestamp(_data + 1);
-	_timeRangingReply1Received.getTimestamp(_data + 6);
-	_timeRangingReply2Sent.getTimestamp(_data + 11);
-	DW1000.setTxData(_data, LEN_DATA);
+	_timeRangingInitSent.getTimestamp(&_txData[MSG_FIELD_DATA_START]);
+	_timeRangingReply1Received.getTimestamp(&_txData[MSG_FIELD_DATA_START] + 5);
+	_timeRangingReply2Sent.getTimestamp(&_txData[MSG_FIELD_DATA_START] + 10);
+	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
 	_expectedMsg = MSG_RANGING_REPORT;
 }
@@ -171,10 +184,12 @@ void P2PRanging::transmitRangeReport(const uint32_t curRange_um)
 	DW1000.newTransmit();
 	DW1000.setDefaults();
 	_lastTxMsg = MSG_RANGING_REPORT ;
-	_data[0] = _lastTxMsg;
+	_txData[MSG_FIELD_TYPE] = _lastTxMsg;
+	_txData[MSG_FIELD_REQUESTER_ID] = _commPartnerId;
+	_txData[MSG_FIELD_RESPONDER_ID] = _myId;
 	// write final ranging result
-    memcpy(_data + 1, &curRange_um, 4);
-	DW1000.setTxData(_data, LEN_DATA);
+    memcpy(&_txData[MSG_FIELD_DATA_START], &curRange_um, 4);
+	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
 	_expectedMsg = MSG_RANGING_INIT;
     //NOTE: cannot reset here, would cancel transmission resetInactive();
@@ -185,8 +200,10 @@ void P2PRanging::transmitRangeFailed()
 	DW1000.newTransmit();
 	DW1000.setDefaults();
 	_lastTxMsg = MSG_RANGING_FAILED;
-	_data[0] = _lastTxMsg;
-	DW1000.setTxData(_data, LEN_DATA);
+	_txData[MSG_FIELD_TYPE] = _lastTxMsg;
+	_txData[MSG_FIELD_REQUESTER_ID] = _commPartnerId;
+	_txData[MSG_FIELD_RESPONDER_ID] = _myId;
+	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
     //NOTE: cannot reset here, would cancel transmission resetInactive();
 }
@@ -229,13 +246,16 @@ void print_message_str(P2PRanging::MessageTypes msg){
 
 void P2PRanging::runLoop()
 {
+
 	if (_haveUnhandledSentMsg)
 	{
+		perf_begin(pc_time_loopTxSec);
 		_haveUnhandledSentMsg = false;
 		switch (_lastTxMsg )//message ID
 		{
 		case MSG_RANGING_INIT:
 			DW1000.getTransmitTimestamp(_timeRangingInitSent);
+            noteActivity();
             perf_begin(pc_time_SInit_RReply1);
             perf_end(pc_time_RRange_SInit);
             perf_end(pc_time_LoopRequester);
@@ -244,12 +264,14 @@ void P2PRanging::runLoop()
 
         case MSG_RANGING_REPLY1:
 			DW1000.getTransmitTimestamp(_timeRangingReply1Sent);
+            noteActivity();
             perf_end(pc_time_RInit_SReply1);
             perf_begin(pc_time_SReply1_RReply2);
 			break;
 
 		case MSG_RANGING_REPLY2:
             DW1000.getTransmitTimestamp(_timeRangingReply2Sent);
+            noteActivity();
             perf_end(pc_time_RReply1_SReply2);
             perf_begin(pc_time_SReply2_RRange);
             break;
@@ -267,19 +289,19 @@ void P2PRanging::runLoop()
 		default:
 			//???
 			//TODO this shouldn't happen. Should log this somehow.
-			return;
+			break;
 		}
-		//else?
-        noteActivity();
+        perf_end(pc_time_loopTxSec);
 		return;
 	}
 
 	if (_haveUnhandledReceivedMsg)
 	{
+		perf_begin(pc_time_loopRxSec);
 		_haveUnhandledReceivedMsg = false;
 		// get message and parse
-		DW1000.getRxData(_data, LEN_DATA);
-		P2PRanging::MessageTypes msgId = P2PRanging::MessageTypes(_data[0]);
+		DW1000.getRxData(_rxData, LEN_DATA);
+		P2PRanging::MessageTypes msgId = P2PRanging::MessageTypes(_rxData[MSG_FIELD_TYPE]);
 		if (msgId != _expectedMsg && msgId != MSG_RANGING_INIT)
 		{
 			// unexpected message, start over again
@@ -290,6 +312,7 @@ void P2PRanging::runLoop()
 			printf(">\n");
 			_expectedMsg = MSG_RANGING_REPLY1;
             perf_count(pc_count_unexpectedMsg);
+            perf_end(pc_time_loopRxSec);
 			return;
 		}
 
@@ -320,9 +343,9 @@ void P2PRanging::runLoop()
 			_expectedMsg = MSG_RANGING_INIT;
 			if (!_protocolFailed)
 			{
-				_timeRangingInitSent.setTimestamp(_data + 1);
-				_timeRangingReply1Received.setTimestamp(_data + 6);
-				_timeRangingReply2Sent.setTimestamp(_data + 11);
+				_timeRangingInitSent.setTimestamp(&_rxData[MSG_FIELD_DATA_START]);
+				_timeRangingReply1Received.setTimestamp(&_rxData[MSG_FIELD_DATA_START] + 5);
+				_timeRangingReply2Sent.setTimestamp(&_rxData[MSG_FIELD_DATA_START] + 10);
 				// (re-)compute range as two-way ranging is done
 				computeRangeAsymmetric(); // CHOSEN RANGING ALGORITHM
 				float distance = _timeComputedRange.getAsMeters();
@@ -367,7 +390,7 @@ void P2PRanging::runLoop()
             perf_count(pc_count_RangingSucceeded);
 			_expectedMsg = MSG_RANGING_INIT;
 			uint32_t curRange_um;
-			memcpy(&curRange_um, _data + 1, 4);
+			memcpy(&curRange_um, &_rxData[MSG_FIELD_DATA_START], 4);
 			printf("Received MSG_RANGING_REPORT, dist = %dmm\n", int(curRange_um/1000));
 //            startNewRanging = true;
 			transmitRangingInit();
@@ -385,9 +408,7 @@ void P2PRanging::runLoop()
 
 		}
 
-//		if(startNewRanging){
-//
-//		}
+        perf_end(pc_time_loopRxSec);
 		return;
 	}
 

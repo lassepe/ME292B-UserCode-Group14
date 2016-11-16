@@ -41,8 +41,6 @@
 #include <poll.h>
 
 #include <uORB/uORB.h>
-#include <uORB/topics/sensor_combined.h>
-#include <uORB/topics/vehicle_attitude.h>
 
 #include "DW1000Device.h"
 
@@ -95,7 +93,7 @@ int mtest_main(int argc, char *argv[])
         printf("### P2P-ranging ###\n");
 		static DW1000NS::P2PRanging p2pRanging;
 
-		if (p2pRanging.Initialize())
+		if (p2pRanging.Initialize(2,10))
 		{
 			printf("Init failed, returning.");
 			return -1;

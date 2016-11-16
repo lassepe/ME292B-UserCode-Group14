@@ -18,16 +18,25 @@ public:
 		MSG_RANGING_FAILED = 255, //exchange failed.
 	};
 
+	enum MessageFields
+	{
+		MSG_FIELD_TYPE = 0, //what type of message is this?
+		MSG_FIELD_REQUESTER_ID = MSG_FIELD_TYPE + 1,
+		MSG_FIELD_RESPONDER_ID = MSG_FIELD_REQUESTER_ID + 1,
+		MSG_FIELD_INTERACTION_COUNTER = MSG_FIELD_RESPONDER_ID + 1,
+		MSG_FIELD_DATA_START = MSG_FIELD_INTERACTION_COUNTER + 1,
+	};
+
 	enum
 	{ //some constants
-		LEN_DATA = 16,
+		LEN_DATA = 19,
 		DEFAULT_RESET_PERIOD_MS = 250,
 		DEFAULT_DELAY_TIME_US = 3000,
 	};
 
 	P2PRanging();
 
-	static int Initialize();
+	static int Initialize(uint8_t deviceId, uint16_t networkId);
 
 	static void LoopFunction(void);
 
@@ -90,7 +99,8 @@ private:
 	// last computed range/time
 	static DW1000Time _timeComputedRange;
 	// data buffer
-	static uint8_t _data[LEN_DATA];
+	static uint8_t _rxData[LEN_DATA];
+	static uint8_t _txData[LEN_DATA];
 	// watchdog and reset period
 	static volatile uint32_t _lastActivityTime_ms;
 	static uint32_t _resetPeriod_ms;
@@ -101,6 +111,10 @@ private:
 	static uint32_t _rangingCountPeriod;
 	static float _samplingRate;
 	static bool _autoTxRangingInit;
+
+	static uint8_t _myId;
+	static uint8_t _commPartnerId;//the Id of the other party we're talking to
+
 };
 
 }// namespace DW1000NS

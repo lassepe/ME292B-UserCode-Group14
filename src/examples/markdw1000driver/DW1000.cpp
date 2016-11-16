@@ -1280,9 +1280,13 @@ void DW1000Class::getTransmitTimestamp(DW1000Time& time) {
 void DW1000Class::getReceiveTimestamp(DW1000Time& time) {
 	uint8_t rxTimeBytes[LEN_RX_STAMP];
 	readBytes(RX_TIME, RX_STAMP_SUB, rxTimeBytes, LEN_RX_STAMP);
-	time.setTimestamp(rxTimeBytes);
+	correctRawTimestamp(rxTimeBytes, time);
+}
+
+void DW1000Class::correctRawTimestamp(uint8_t const rxTimeBytes[LEN_RX_STAMP], DW1000Time& outTime){
+	outTime.setTimestamp(rxTimeBytes);
 	// correct timestamp (i.e. consider range bias)
-	correctTimestamp(time);
+	correctTimestamp(outTime);
 }
 
 // TODO check function, different type violations between uint8_t and int
@@ -1345,15 +1349,15 @@ void DW1000Class::getSystemTimestamp(DW1000Time& time) {
 	time.setTimestamp(sysTimeBytes);
 }
 
-void DW1000Class::getTransmitTimestamp(uint8_t data[]) {
+void DW1000Class::getTransmitTimestamp(uint8_t data[LEN_TX_STAMP]) {
 	readBytes(TX_TIME, TX_STAMP_SUB, data, LEN_TX_STAMP);
 }
 
-void DW1000Class::getReceiveTimestamp(uint8_t data[]) {
+void DW1000Class::getReceiveTimestampRaw(uint8_t data[LEN_RX_STAMP]) {
 	readBytes(RX_TIME, RX_STAMP_SUB, data, LEN_RX_STAMP);
 }
 
-void DW1000Class::getSystemTimestamp(uint8_t data[]) {
+void DW1000Class::getSystemTimestamp(uint8_t data[LEN_SYS_TIME]) {
 	readBytes(SYS_TIME, NO_SUB, data, LEN_SYS_TIME);
 }
 
@@ -1757,8 +1761,8 @@ void DW1000Class::enableAllLeds(void)
   // Enable LED blinking and set the rate
   dat[3] = 0x00;
   dat[2] = 0x00;
-  dat[1] = 0x01;
-  dat[0] = 0x10;
+  dat[1] = 0x01;//blink enable
+  dat[0] = 0x10;//blink time count
 //  reg = 0x00 00 01 10ul;
   writeBytes(PMSC, PMSC_LEDC, dat, 4);
 //  dwSpiWrite32(dev, PMSC, PMSC_LEDC, reg);

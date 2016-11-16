@@ -21,6 +21,8 @@
 #ifndef _DW1000CONSTANTS_H_INCLUDED
 #define _DW1000CONSTANTS_H_INCLUDED
 
+//TODO mwm: make all of these enums, hide away!
+
 // time stamp byte length
 #define LEN_STAMP 5
 

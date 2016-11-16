@@ -102,12 +102,13 @@ int mtest_main(int argc, char *argv[])
 		}
 
 		if(!strcmp(argv[1], "A")){
+            printf("Starting loop as anchor...\n");
             p2pRanging.setAutoTransmitRangingInit(false);
 		}
 		else{
+            printf("Starting loop as requester...\n");
             p2pRanging.setAutoTransmitRangingInit(true);
 		}
-		printf("Starting loop as anchor...\n");
 		for (;;)
 		{
 			p2pRanging.runLoop();

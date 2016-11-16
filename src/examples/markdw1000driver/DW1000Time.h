@@ -72,7 +72,7 @@ public:
 	// setter
 	// dw1000 timestamp, increase of +1 approx approx. 15.65ps real time
 	void setTimestamp(int64_t value);
-	void setTimestamp(uint8_t data[]);
+	void setTimestamp(uint8_t const data[LENGTH_TIMESTAMP]);
 	void setTimestamp(const DW1000Time& copy);
 	void setTimestampFromDistance(float dist);
 	

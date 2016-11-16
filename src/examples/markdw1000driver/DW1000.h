@@ -201,11 +201,13 @@ public:
 	static uint16_t     getDataLength();
 	static void         getTransmitTimestamp(DW1000Time& time);
 	static void         getReceiveTimestamp(DW1000Time& time);
+	static void         getReceiveTimestampRaw(uint8_t data[LEN_RX_STAMP]);
 	static void         getSystemTimestamp(DW1000Time& time);
-	static void         getTransmitTimestamp(uint8_t data[]);
-	static void         getReceiveTimestamp(uint8_t data[]);
-	static void         getSystemTimestamp(uint8_t data[]);
+	static void         getTransmitTimestamp(uint8_t data[LEN_TX_STAMP]);
+	static void         getSystemTimestamp(uint8_t data[LEN_SYS_TIME]);
 	
+	static void correctRawTimestamp(uint8_t const rxTimeBytes[LEN_RX_STAMP], DW1000Time& outTime);
+
 	/* receive quality information. */
 	static float getReceivePower();
 	static float getFirstPathPower();

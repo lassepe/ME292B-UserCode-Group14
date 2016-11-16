@@ -91,7 +91,7 @@ void DW1000Time::setTimestamp(int64_t value) {
  * Set timestamp
  * @param data timestamp as byte array
  */
-void DW1000Time::setTimestamp(uint8_t data[]) {
+void DW1000Time::setTimestamp(uint8_t const data[LENGTH_TIMESTAMP]) {
 	_timestamp = 0;
 	for(uint8_t i = 0; i < LENGTH_TIMESTAMP; i++) {
 		_timestamp |= ((int64_t)data[i] << (i*8));

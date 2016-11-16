@@ -25,6 +25,7 @@
 #include "DW1000.h"
 #include <math.h>
 
+using namespace DW1000NS;
 
 //Constructor and destructor
 DW1000Device::DW1000Device() {

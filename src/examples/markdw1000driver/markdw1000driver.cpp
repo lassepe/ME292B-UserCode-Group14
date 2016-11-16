@@ -93,7 +93,7 @@ int mtest_main(int argc, char *argv[])
 	if (!strcmp(argv[1], "A") || !strcmp(argv[1], "T"))
 	{
         printf("### P2P-ranging ###\n");
-		static P2PRanging p2pRanging;
+		static DW1000NS::P2PRanging p2pRanging;
 
 		if (p2pRanging.Initialize())
 		{

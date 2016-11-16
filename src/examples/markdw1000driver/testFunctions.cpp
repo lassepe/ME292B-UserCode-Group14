@@ -1,5 +1,7 @@
 #include "testFunctions.hpp"
 
+using namespace DW1000NS;
+
 // DEBUG packet sent status and count
 static volatile bool sentAck = false;
 static volatile unsigned long delaySent = 0;

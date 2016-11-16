@@ -30,6 +30,8 @@
 #include "DW1000Ranging.h"
 #include "DW1000Device.h"
 
+using namespace DW1000NS;
+
 //debug mode
 #ifndef DEBUG
 #define DEBUG false

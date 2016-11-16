@@ -1,6 +1,8 @@
 #include "P2PRanging.h"
 
-#include "DW1000.cpp"
+#include "DW1000.h"
+
+using namespace DW1000NS;
 
 //definitions of static members:
 volatile P2PRanging::MessageTypes P2PRanging::_expectedMsg;
@@ -51,8 +53,8 @@ int P2PRanging::Initialize()
 	// general configuration
 	DW1000.newConfiguration();
 	DW1000.setDefaults();
-	DW1000.setDeviceAddress(2);
-	DW1000.setNetworkId(10);
+	DW1000.setDeviceAddress(2);//mwm TODO magic number
+	DW1000.setNetworkId(10);//mwm TODO magic number
 	DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_ACCURACY); //somewhat arbitrary mode
 	DW1000.commitConfiguration();
 

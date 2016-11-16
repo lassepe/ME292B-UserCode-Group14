@@ -24,17 +24,14 @@
 
 static struct spi_dev_s *spi1;
 
-DW1000Class DW1000;
+DW1000NS::DW1000Class DW1000NS::DW1000;
+
+using namespace DW1000NS;
+using namespace DW1000Constants;
 
 /* ###########################################################################
  * #### Static member variables ##############################################
  * ######################################################################### */
-// pins
-//uint8_t DW1000Class::_ss;
-//uint8_t DW1000Class::_rst;
-//uint8_t DW1000Class::_irq;
-
-
 // IRQ callbacks
 void (* DW1000Class::_handleSent)(void)                      = 0;
 void (* DW1000Class::_handleError)(void)                     = 0;
@@ -44,13 +41,13 @@ void (* DW1000Class::_handleReceiveTimeout)(void)            = 0;
 void (* DW1000Class::_handleReceiveTimestampAvailable)(void) = 0;
 
 // registers
-uint8_t       DW1000Class::_syscfg[LEN_SYS_CFG];
-uint8_t       DW1000Class::_sysctrl[LEN_SYS_CTRL];
-uint8_t       DW1000Class::_sysstatus[LEN_SYS_STATUS];
-uint8_t       DW1000Class::_txfctrl[LEN_TX_FCTRL];
-uint8_t       DW1000Class::_sysmask[LEN_SYS_MASK];
-uint8_t       DW1000Class::_chanctrl[LEN_CHAN_CTRL];
-uint8_t       DW1000Class::_networkAndAddress[LEN_PANADR];
+uint8_t       DW1000Class::_syscfg[DW1000Constants::LEN_SYS_CFG];
+uint8_t       DW1000Class::_sysctrl[DW1000Constants::LEN_SYS_CTRL];
+uint8_t       DW1000Class::_sysstatus[DW1000Constants::LEN_SYS_STATUS];
+uint8_t       DW1000Class::_txfctrl[DW1000Constants::LEN_TX_FCTRL];
+uint8_t       DW1000Class::_sysmask[DW1000Constants::LEN_SYS_MASK];
+uint8_t       DW1000Class::_chanctrl[DW1000Constants::LEN_CHAN_CTRL];
+uint8_t       DW1000Class::_networkAndAddress[DW1000Constants::LEN_PANADR];
 
 // monitoring
 uint8_t DW1000Class::_vmeas3v3 = 0;

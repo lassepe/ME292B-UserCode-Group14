@@ -36,6 +36,8 @@
 #include <drivers/device/spi.h>
 #include <visibility.h>
 
+namespace DW1000NS{
+
 class __EXPORT DW1000Class {
 public:
 	/* ##### Init ################################################################ */
@@ -201,12 +203,12 @@ public:
 	static uint16_t     getDataLength();
 	static void         getTransmitTimestamp(DW1000Time& time);
 	static void         getReceiveTimestamp(DW1000Time& time);
-	static void         getReceiveTimestampRaw(uint8_t data[LEN_RX_STAMP]);
+	static void         getReceiveTimestampRaw(uint8_t data[DW1000Constants::LEN_RX_STAMP]);
 	static void         getSystemTimestamp(DW1000Time& time);
-	static void         getTransmitTimestamp(uint8_t data[LEN_TX_STAMP]);
-	static void         getSystemTimestamp(uint8_t data[LEN_SYS_TIME]);
+	static void         getTransmitTimestamp(uint8_t data[DW1000Constants::LEN_TX_STAMP]);
+	static void         getSystemTimestamp(uint8_t data[DW1000Constants::LEN_SYS_TIME]);
 	
-	static void correctRawTimestamp(uint8_t const rxTimeBytes[LEN_RX_STAMP], DW1000Time& outTime);
+	static void correctRawTimestamp(uint8_t const rxTimeBytes[DW1000Constants::LEN_RX_STAMP], DW1000Time& outTime);
 
 	/* receive quality information. */
 	static float getReceivePower();
@@ -378,19 +380,19 @@ public:
 	static void (* _handleReceiveTimestampAvailable)(void);
 	
 	/* register caches. */
-	static uint8_t _syscfg[LEN_SYS_CFG];
-	static uint8_t _sysctrl[LEN_SYS_CTRL];
-	static uint8_t _sysstatus[LEN_SYS_STATUS];
-	static uint8_t _txfctrl[LEN_TX_FCTRL];
-	static uint8_t _sysmask[LEN_SYS_MASK];
-	static uint8_t _chanctrl[LEN_CHAN_CTRL];
+	static uint8_t _syscfg[DW1000Constants::LEN_SYS_CFG];
+	static uint8_t _sysctrl[DW1000Constants::LEN_SYS_CTRL];
+	static uint8_t _sysstatus[DW1000Constants::LEN_SYS_STATUS];
+	static uint8_t _txfctrl[DW1000Constants::LEN_TX_FCTRL];
+	static uint8_t _sysmask[DW1000Constants::LEN_SYS_MASK];
+	static uint8_t _chanctrl[DW1000Constants::LEN_CHAN_CTRL];
 	
 	/* device status monitoring */
 	static uint8_t _vmeas3v3;
 	static uint8_t _tmeas23C;
 
 	/* PAN and short address. */
-	static uint8_t _networkAndAddress[LEN_PANADR];
+	static uint8_t _networkAndAddress[DW1000Constants::LEN_PANADR];
 	
 	/* internal helper that guide tuning the chip. */
 	static bool       _smartPower;
@@ -513,5 +515,6 @@ public:
 };
 
 extern DW1000Class DW1000;
+};
 
 #endif

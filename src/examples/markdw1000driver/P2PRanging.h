@@ -1,9 +1,11 @@
 #pragma once
 #include <stdint.h>
 
+#include "DW1000.h"
 #include "DW1000Device.h"
 #include "DW1000Constants.h"
 
+namespace DW1000NS{
 class P2PRanging
 {
 public:
@@ -101,3 +103,4 @@ private:
 	static bool _autoTxRangingInit;
 };
 
+}// namespace DW1000NS

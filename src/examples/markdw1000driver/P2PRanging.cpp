@@ -3,7 +3,6 @@
 #include "DW1000.cpp"
 
 //definitions of static members:
-volatile P2PRanging::Status P2PRanging::_status;
 volatile P2PRanging::MessageTypes P2PRanging::_expectedMsgId;
 volatile bool P2PRanging::_sentAck;
 volatile bool P2PRanging::_receivedAck;
@@ -30,8 +29,6 @@ P2PRanging::P2PRanging()
 	_sentAck = false;
 	_receivedAck = false;
 	_protocolFailed = false;
-
-	_status = LISTENING;
 
 	_resetPeriod_ms = DEFAULT_RESET_PERIOD_MS;
 	// reply times (same on both sides for symm. ranging)

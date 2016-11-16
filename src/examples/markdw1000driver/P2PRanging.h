@@ -15,12 +15,6 @@ public:
 		RANGE_FAILED = 255, //exchange failed.
 	};
 
-	enum Status
-	{
-		LISTENING = 0, //when the unit isn't doing anything
-		COMMUNICATING = 1, //when the unit is executing a ranging exchange
-	};
-
 	enum
 	{ //some constants
 		LEN_DATA = 16,
@@ -34,10 +28,6 @@ public:
 
 	static void LoopFunction(void);
 
-	static Status getStatus()
-	{
-		return _status;
-	}
 
 	void setAutoTransmitPoll(bool in)
 	{
@@ -68,8 +58,6 @@ private:
 	static void computeRangeSymmetric();
 
 	static void rangingReceiver(); //->setUpAsReceiver();
-
-	static volatile Status _status;
 
 	static volatile MessageTypes _expectedMsgId;
 

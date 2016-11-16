@@ -90,7 +90,7 @@ int mtest_main(int argc, char *argv[])
 		return basicSender();
 	}
 
-	if (!strcmp(argv[1], "A"))
+	if (!strcmp(argv[1], "A") || !strcmp(argv[1], "T"))
 	{
         printf("### P2P-ranging ###\n");
 		static P2PRanging p2pRanging;
@@ -101,29 +101,13 @@ int mtest_main(int argc, char *argv[])
 			return -1;
 		}
 
-		p2pRanging.setAutoTransmitRangingInit(false);
+		if(!strcmp(argv[1], "A")){
+            p2pRanging.setAutoTransmitRangingInit(false);
+		}
+		else{
+            p2pRanging.setAutoTransmitRangingInit(true);
+		}
 		printf("Starting loop as anchor...\n");
-		for (;;)
-		{
-			p2pRanging.runLoop();
-			usleep(1000); //approx. 1ms
-		}
-		return 0;
-	}
-
-	if (!strcmp(argv[1], "T"))
-	{
-        printf("### P2P-ranging ###\n");
-		static P2PRanging p2pRanging;
-
-		if (p2pRanging.Initialize())
-		{
-			printf("Init failed, returning.");
-			return -1;
-		}
-
-		p2pRanging.setAutoTransmitRangingInit(true);
-		printf("Starting loop as tag...\n");
 		for (;;)
 		{
 			p2pRanging.runLoop();

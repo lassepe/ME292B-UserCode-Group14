@@ -21,16 +21,16 @@ public:
 	enum MessageFields
 	{
 		MSG_FIELD_TYPE = 0, //what type of message is this?
-		MSG_FIELD_REQUESTER_ID = MSG_FIELD_TYPE + 1,
-		MSG_FIELD_RESPONDER_ID = MSG_FIELD_REQUESTER_ID + 1,
-		MSG_FIELD_INTERACTION_COUNTER = MSG_FIELD_RESPONDER_ID + 1,
+		MSG_FIELD_SENDER_ID = MSG_FIELD_TYPE + 1,
+		MSG_FIELD_TARGET_ID = MSG_FIELD_SENDER_ID  + 1,
+		MSG_FIELD_INTERACTION_COUNTER = MSG_FIELD_TARGET_ID + 1,
 		MSG_FIELD_DATA_START = MSG_FIELD_INTERACTION_COUNTER + 1,
 	};
 
 	enum
 	{ //some constants
 		LEN_DATA = 19,
-		DEFAULT_RESET_PERIOD_MS = 250,
+		DEFAULT_RESET_PERIOD_MS = 5,
 		DEFAULT_DELAY_TIME_US = 3000,
 	};
 
@@ -41,9 +41,8 @@ public:
 	static void LoopFunction(void);
 
 
-	void setAutoTransmitRangingInit(bool in)
-	{
-		_autoTxRangingInit = in;
+	void setRangingTarget(uint8_t id){
+		_rangingTargetId = id;
 	}
 
 	static void runLoop();
@@ -53,6 +52,8 @@ private:
 	{
 		_lastActivityTime_ms = DW1000Device::getTimeMillis();
 	}
+
+	static bool isRxMessageConsistent();
 
 	static void resetInactive();
 
@@ -110,11 +111,10 @@ private:
 	static uint16_t _successRangingCount;
 	static uint32_t _rangingCountPeriod;
 	static float _samplingRate;
-	static bool _autoTxRangingInit;
 
 	static uint8_t _myId;
 	static uint8_t _commPartnerId;//the Id of the other party we're talking to
-
+	static uint8_t _rangingTargetId ;//next target for ranging (zero if no-one).
 };
 
 }// namespace DW1000NS

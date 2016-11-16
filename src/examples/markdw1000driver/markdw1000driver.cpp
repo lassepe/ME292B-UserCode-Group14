@@ -93,22 +93,33 @@ int mtest_main(int argc, char *argv[])
         printf("### P2P-ranging ###\n");
 		static DW1000NS::P2PRanging p2pRanging;
 
-		if (p2pRanging.Initialize(2,10))
+		bool isRequester = false;
+
+		uint8_t myId, targetId;
+		if(!strcmp(argv[1], "T")){
+			isRequester = true;
+		}
+
+		if(isRequester){
+            myId = 1;
+            targetId = 2;
+		}
+		else{
+            myId = 2;
+		}
+
+		if (p2pRanging.Initialize(myId,10))
 		{
 			printf("Init failed, returning.");
 			return -1;
 		}
 
-		if(!strcmp(argv[1], "A")){
-            printf("Starting loop as anchor...\n");
-            p2pRanging.setAutoTransmitRangingInit(false);
-		}
-		else{
-            printf("Starting loop as requester...\n");
-            p2pRanging.setAutoTransmitRangingInit(true);
-		}
 		for (;;)
 		{
+            if(isRequester){
+            	//always range to this guy (this will force doing an immediate range after completion)
+                p2pRanging.setRangingTarget(targetId);
+            }
 			p2pRanging.runLoop();
 			usleep(100);
 		}

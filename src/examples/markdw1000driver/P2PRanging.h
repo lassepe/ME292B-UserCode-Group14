@@ -53,8 +53,8 @@ private:
 	//the four message types
 	static void transmitRangingInit();
 	static void transmitRangingReply1();
-	static void transmitRange();
-	static void transmitRangeReport(const float curRange);
+	static void transmitRangingReply2();
+	static void transmitRangeReport(const uint32_t curRange_um);
 	static void transmitRangeFailed();
 
 	static void computeRangeAsymmetric();

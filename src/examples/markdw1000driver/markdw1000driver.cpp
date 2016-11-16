@@ -112,7 +112,7 @@ int mtest_main(int argc, char *argv[])
 		for (;;)
 		{
 			p2pRanging.runLoop();
-			usleep(1000); //approx. 1ms
+			usleep(100);
 		}
 		return 0;
 	}

@@ -75,6 +75,8 @@ public:
 	*/
 	static void getPrintableDeviceIdentifier(char msgBuffer[]);
 	
+	static uint32_t getDeviceIdentifier();
+
 	/** 
 	Generates a String representation of the extended unique identifier (EUI) of the chip.
 
@@ -82,6 +84,8 @@ public:
 		Provide 128 uint8_ts, this should be sufficient.
 	*/
 	static void getPrintableExtendedUniqueIdentifier(char msgBuffer[]);
+
+    static void printStatus();
 	
 	/** 
 	Generates a String representation of the short address and network identifier currently
@@ -445,6 +449,7 @@ public:
 	
 	/* interrupt state handling */
 	static void clearInterrupts();
+	static void clearAllStatusHARD();
 	static void clearAllStatus();
 	static void clearReceiveStatus();
 	static void clearReceiveTimestampAvailableStatus();
@@ -482,7 +487,7 @@ public:
 	static void writeValueToBytes(uint8_t data[], int32_t val, uint16_t n);
 	
 	/* internal helper for bit operations on multi-uint8_ts. */
-	static bool getBit(uint8_t data[], uint16_t n, uint16_t bit);
+	static bool getBit(uint8_t const data[], uint16_t n, uint16_t bit);
 	static void setBit(uint8_t data[], uint16_t n, uint16_t bit, bool val);
 	
 	/* Register is 6 bit, 7 = write, 6 = sub-adressing, 5-0 = register value
@@ -510,6 +515,7 @@ public:
 	static constexpr uint8_t BIAS_900_16[] = {137, 122, 105, 88, 69, 47, 25, 0, 21, 48, 79, 105, 127, 147, 160, 169, 178, 197};
 	static constexpr uint8_t BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24, 45, 63, 76, 87, 98, 116, 122, 132, 142};
 	
+	static volatile unsigned _numInterrupts;
 };
 
 extern DW1000Class DW1000;

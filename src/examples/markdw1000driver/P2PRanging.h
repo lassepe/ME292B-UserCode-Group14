@@ -30,7 +30,7 @@ public:
 	enum
 	{ //some constants
 		LEN_DATA = 19,
-		DEFAULT_RESET_PERIOD_MS = 5,
+		DEFAULT_RESET_PERIOD_MS = 10,
 		DEFAULT_DELAY_TIME_US = 3000,
 	};
 
@@ -40,6 +40,8 @@ public:
 
 	static void LoopFunction(void);
 
+	void printStatus();
+	void clearSysStatus();
 
 	void setRangingTarget(uint8_t id){
 		_rangingTargetId = id;
@@ -59,6 +61,10 @@ private:
 
 	static void handleSent();
 	static void handleReceived();
+	static void handleError();
+	static void handleReceiveFailed();
+	static void handleReceiveTimeout();
+	static void handleReceiveTimestampAvailable();
 
 	//the four message types
 	static void transmitRangingInit();
@@ -72,13 +78,19 @@ private:
 
 	static void rangingReceiver(); //->setUpAsReceiver();
 
+    void printMessageStr(MessageTypes msg);
+
 	static volatile MessageTypes _expectedMsg;
 	static volatile MessageTypes _lastTxMsg;
-//	static volatile MessageTypes _lastRxMsg;
+	static volatile MessageTypes _lastRxMsg;
 
 	// message sent/received state
 	static volatile bool _haveUnhandledSentMsg;
 	static volatile bool _haveUnhandledReceivedMsg;
+	static volatile bool _haveUnhandledError;
+	static volatile bool _haveUnhandledReceiveFailed;
+	static volatile bool _haveUnhandledReceiveTimeout;
+	static volatile bool _haveUnhandledReceiveTimestampAvailable;
 	// protocol error state
 	static volatile bool _protocolFailed;
 
@@ -115,6 +127,18 @@ private:
 	static uint8_t _myId;
 	static uint8_t _commPartnerId;//the Id of the other party we're talking to
 	static uint8_t _rangingTargetId ;//next target for ranging (zero if no-one).
+
+	static unsigned _numRangingsInitiationsSent;
+	static unsigned _numRangingsInitiationsReceived;
+	static unsigned _numRangingsCompletedSent;
+	static unsigned _numRangingsCompletedReceived;
+	static unsigned _numTimeouts;
+	static unsigned _numResets;
+    static unsigned _numMsgReceived;
+    static unsigned _numMsgSent;
+    static unsigned _numMsgSentInit;
+    static unsigned volatile _numIRQReceived;
+    static unsigned volatile _numIRQSent;
 };
 
 }// namespace DW1000NS

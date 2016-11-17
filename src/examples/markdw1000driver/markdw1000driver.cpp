@@ -31,14 +31,19 @@
  *
  ****************************************************************************/
 
-#include <px4_config.h>
-#include <px4_tasks.h>
-#include <px4_posix.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <poll.h>
+#include <unistd.h>
+
+#include <px4_config.h>
+#include <px4_tasks.h>
+#include <px4_posix.h>
+
+#include <nuttx/sched.h>
+
+#include <systemlib/systemlib.h>
+#include <systemlib/err.h>
 
 #include <uORB/uORB.h>
 
@@ -50,6 +55,16 @@
 
 extern "C" __EXPORT int mtest_main(int argc, char *argv[]);
 
+static bool thread_should_exit = false;
+static bool thread_running = false;
+static bool thread_should_print_status = false;
+static bool thread_should_clearSysStatus = false;
+static int daemon_task;
+
+static uint8_t targetId = 0;
+
+int mtest_thread_main(int argc, char *argv[]);
+
 void usage();
 
 void usage()
@@ -57,10 +72,10 @@ void usage()
 	printf("Need at least one argument:\n");
 	printf("\tA -> start ranging Anchor (sink state)\n");
 	printf("\tT -> start ranging Tag (sink state)\n");
-	printf("\tc -> basic connectivity test\n");
-	printf("\ts -> basic sender\n");
-	printf("\tr -> basic receiver\n");
-	printf("\tt -> Timing test\n");
+//	printf("\tc -> basic connectivity test\n");
+//	printf("\ts -> basic sender\n");
+//	printf("\tr -> basic receiver\n");
+//	printf("\tt -> Timing test\n");
 
 }
 
@@ -71,6 +86,7 @@ int mtest_main(int argc, char *argv[])
 		usage();
 		return 0;
 	}
+	/*
 	if (!strcmp(argv[1], "t"))
 	{
 		return markTestTimestampTest();
@@ -87,7 +103,79 @@ int mtest_main(int argc, char *argv[])
 	{
 		return basicSender();
 	}
+	*/
 
+	if (!strcmp(argv[1], "stop")) {
+		thread_should_exit = true;
+		return 0;
+	}
+
+	if (!strcmp(argv[1], "status")) {
+		if (thread_running) {
+            thread_should_print_status  = true;
+		} else {
+			warnx("\tnot started\n");
+		}
+
+		return 0;
+	}
+
+	if (!strcmp(argv[1], "clear")) {
+		if (thread_running) {
+			thread_should_clearSysStatus = true;
+		} else {
+			warnx("\tnot started\n");
+		}
+
+		return 0;
+	}
+
+	if (!strcmp(argv[1], "targetOff")) {
+		if (thread_running) {
+			targetId = 0;
+		} else {
+			warnx("\tnot started\n");
+		}
+
+		return 0;
+	}
+
+	if (!strcmp(argv[1], "targetOn")) {
+		if (thread_running) {
+			targetId = 2;
+		} else {
+			warnx("\tnot started\n");
+		}
+
+		return 0;
+	}
+
+	if (!strcmp(argv[1], "start")) {
+
+		if (thread_running) {
+			warnx("daemon already running\n");
+			/* this is not an error */
+			return 0;
+		}
+
+		thread_should_exit = false;
+		daemon_task = px4_task_spawn_cmd("dw1000p2pranging",
+						 SCHED_DEFAULT,
+						 SCHED_PRIORITY_DEFAULT,
+						 2000,
+						 mtest_thread_main,
+						 (argv) ? (char *const *)&argv[2] : (char *const *)NULL);
+		return 0;
+	}
+
+
+
+	usage();
+	return -1;
+}
+
+int mtest_thread_main(int argc, char *argv[])
+{
 	if (!strcmp(argv[1], "A") || !strcmp(argv[1], "T"))
 	{
         printf("### P2P-ranging ###\n");
@@ -95,7 +183,7 @@ int mtest_main(int argc, char *argv[])
 
 		bool isRequester = false;
 
-		uint8_t myId, targetId;
+		uint8_t myId;
 		if(!strcmp(argv[1], "T")){
 			isRequester = true;
 		}
@@ -114,6 +202,8 @@ int mtest_main(int argc, char *argv[])
 			return -1;
 		}
 
+        thread_running = true;
+
 		for (;;)
 		{
             if(isRequester){
@@ -122,10 +212,24 @@ int mtest_main(int argc, char *argv[])
             }
 			p2pRanging.runLoop();
 			usleep(100);
+			if(thread_should_exit)
+			{
+				break;
+			}
+			if(thread_should_clearSysStatus)
+			{
+                thread_should_clearSysStatus = false;
+                p2pRanging.clearSysStatus();
+			}
+			if(thread_should_print_status)
+			{
+				thread_should_print_status = false;
+				p2pRanging.printStatus();
+			}
 		}
+        thread_running = false;
 		return 0;
 	}
-
-	usage();
+	printf("Unrecognized command\n");
 	return -1;
 }

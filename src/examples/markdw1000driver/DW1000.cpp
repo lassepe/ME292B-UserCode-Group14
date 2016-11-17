@@ -103,6 +103,8 @@ const uint8_t DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24
 #define FAST_SPI_FREQ (16000000L)
 #define SLOW_SPI_FREQ (2000000L)
 
+volatile unsigned DW1000Class::_numInterrupts = 0;
+
 /* ###########################################################################
  * #### Init and end #######################################################
  * ######################################################################### */
@@ -165,6 +167,7 @@ int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	// start SPI
 	//SPI.begin();
 
+	sched_lock();
 	spi1 = up_spiinitialize(PX4_SPIDEV_EXPANSION_DW1000_PORT);
 	if (!spi1) {
 		printf("[boot] FAILED to initialize SPI port 1\r\n");
@@ -181,6 +184,7 @@ int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
     spi1->ops->setbits(spi1, 8);
     spi1->ops->setmode(spi1, SPIDEV_MODE0);
 //	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
+	sched_unlock();
 
 	//------------------------------------------//
 #ifndef ESP8266
@@ -192,6 +196,7 @@ int DW1000Class::begin(){ //uint32_t irq, uint32_t rst) {
 	// attach interrupt // TODO throw error if pin is not a interrupt pin
 	//mwmspi attachInterrupt(digitalPinToInterrupt(_irq), DW1000Class::handleInterrupt, RISING); // todo interrupt for ESP8266
 
+    //xcpt_t stm32_gpiosetevent(uint32_t pinset, bool risingedge, bool fallingedge, bool event, xcpt_t func)
     stm32_gpiosetevent(GPIO_EXPANSION_LPSDECK_IRQ, true, false, false, DW1000Class::handleInterrupt);
 
 	return 0;
@@ -228,6 +233,7 @@ void DW1000Class::enableClock(uint8_t clock) {
 	uint8_t pmscctrl0[LEN_PMSC_CTRL0];
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
 	readBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
+	sched_lock();
 	if(clock == AUTO_CLOCK) {
         spi1->ops->setfrequency(spi1, FAST_SPI_FREQ);
 		pmscctrl0[0] = AUTO_CLOCK;
@@ -243,6 +249,7 @@ void DW1000Class::enableClock(uint8_t clock) {
 	} else {
 		// TODO deliver proper warning
 	}
+	sched_unlock();
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, 1);
 	writeBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 }
@@ -657,6 +664,7 @@ void DW1000Class::tune() {
 
 int  DW1000Class::handleInterrupt(int irq, FAR void *context) {
 	// read current status and handle via callbacks
+	_numInterrupts++;
 	readSystemEventStatusRegister();
 	if(isClockProblem() /* TODO and others */ && _handleError != 0) {
 		(*_handleError)();
@@ -696,6 +704,13 @@ int  DW1000Class::handleInterrupt(int irq, FAR void *context) {
 	return 0;
 }
 
+
+uint32_t DW1000Class::getDeviceIdentifier()
+{
+	uint32_t  data;
+	readBytes(DEV_ID, NO_SUB, (uint8_t* )&data, LEN_DEV_ID);
+	return data;
+}
 /* ###########################################################################
  * #### Pretty printed device information ####################################
  * ######################################################################### */
@@ -941,10 +956,10 @@ void DW1000Class::interruptOnReceived(bool val) {
 }
 
 void DW1000Class::interruptOnReceiveFailed(bool val) {
-	setBit(_sysmask, LEN_SYS_STATUS, LDEERR_BIT, val);
-	setBit(_sysmask, LEN_SYS_STATUS, RXFCE_BIT, val);
-	setBit(_sysmask, LEN_SYS_STATUS, RXPHE_BIT, val);
-	setBit(_sysmask, LEN_SYS_STATUS, RXRFSL_BIT, val);
+	setBit(_sysmask, LEN_SYS_STATUS, LDEERR_BIT, val);//TODO, FIXME, Shouldn't this be LEN_SYS_MASK?
+	setBit(_sysmask, LEN_SYS_STATUS, RXFCE_BIT, val);//TODO, FIXME, Shouldn't this be LEN_SYS_MASK?
+	setBit(_sysmask, LEN_SYS_STATUS, RXPHE_BIT, val);//TODO, FIXME, Shouldn't this be LEN_SYS_MASK?
+	setBit(_sysmask, LEN_SYS_STATUS, RXRFSL_BIT, val);//TODO, FIXME, Shouldn't this be LEN_SYS_MASK?
 }
 
 void DW1000Class::interruptOnReceiveTimeout(bool val) {
@@ -1390,6 +1405,13 @@ bool DW1000Class::isClockProblem() {
 	return false;
 }
 
+void DW1000Class::clearAllStatusHARD() {
+	memset(_sysstatus, 1, LEN_SYS_STATUS);
+	writeBytes(SYS_STATUS, NO_SUB, _sysstatus, LEN_SYS_STATUS);
+	memset(_sysstatus, 0, LEN_SYS_STATUS);
+	writeBytes(SYS_STATUS, NO_SUB, _sysstatus, LEN_SYS_STATUS);
+}
+
 void DW1000Class::clearAllStatus() {
 	memset(_sysstatus, 0, LEN_SYS_STATUS);
 	writeBytes(SYS_STATUS, NO_SUB, _sysstatus, LEN_SYS_STATUS);
@@ -1534,7 +1556,7 @@ void DW1000Class::setBit(uint8_t data[], uint16_t n, uint16_t bit, bool val) {
  * @param bit
  * 		The position of the bit to be checked.
  */
-bool DW1000Class::getBit(uint8_t data[], uint16_t n, uint16_t bit) {
+bool DW1000Class::getBit(uint8_t const data[], uint16_t n, uint16_t bit) {
 	uint16_t idx;
 	uint8_t  shift;
 	
@@ -1586,12 +1608,14 @@ void DW1000Class::readBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint16
     static uint8_t spiTxBuffer[196];
     static uint8_t spiRxBuffer[196];
 
+	sched_lock();
     memcpy(spiTxBuffer, header, headerLen);
     memset(spiTxBuffer+headerLen, 0, n);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 	spi1->ops->exchange(spi1, spiTxBuffer, spiRxBuffer, headerLen+n);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
     memcpy(data, spiRxBuffer+headerLen, n);
+	sched_unlock();
 }
 
 // always 4 bytes
@@ -1656,11 +1680,13 @@ void DW1000Class::writeBytes(uint8_t cmd, uint16_t offset, uint8_t data[], uint1
     static uint8_t spiTxBuffer[196];
     static uint8_t spiRxBuffer[196];
 
+	sched_lock();
     memcpy(spiTxBuffer, header, headerLen);
     memcpy(spiTxBuffer+headerLen, data, data_size);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, true);
 	spi1->ops->exchange(spi1, spiTxBuffer, spiRxBuffer, headerLen+data_size);
 	spi1->ops->select(spi1, (spi_dev_e) PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
+	sched_unlock();
 }
 
 
@@ -1770,4 +1796,26 @@ void DW1000Class::enableAllLeds(void)
 //  reg &= ~0x00 0f 00 00ul;
 //  dwSpiWrite32(dev, PMSC, PMSC_LEDC, reg);
   writeBytes(PMSC, PMSC_LEDC, dat, 4);
+}
+
+void DW1000Class::printStatus(){
+	printf("\t_permanentReceive = %d\n", int(_permanentReceive));
+    printf("\t_frameCheck = %d\n",       int(_frameCheck));
+    printf("\t_deviceMode = %d\n",       int(_deviceMode));
+    printf("\tnum interrupts = %d\n", int(_numInterrupts));
+    printf("\tdevice ID = %0X\n", int(getDeviceIdentifier()));
+    printf("\tdevice sysstatus = 0x");
+    for(int i = 0; i< DW1000Constants::LEN_SYS_STATUS; i++){
+    	printf("%02x", _sysstatus[i]);
+    }
+    printf("\n");
+    printf("\t\tSys status bits set (DW counting) = ");
+    for(int bitNo = 0; bitNo < (8*DW1000Constants::LEN_SYS_STATUS); bitNo++){
+        if(getBit(_sysstatus, LEN_SYS_STATUS, bitNo)){
+            printf("%d, ", int(bitNo));
+        }
+    }
+    printf("\n");
+    printf("\tIRQ GPIO pin = %d\n", int(stm32_gpioread(GPIO_EXPANSION_LPSDECK_IRQ)));
+
 }

@@ -8,6 +8,7 @@ using namespace DW1000NS;
 //definitions of static members:
 volatile P2PRanging::MessageTypes P2PRanging::_expectedMsg;
 volatile P2PRanging::MessageTypes P2PRanging::_lastTxMsg;
+volatile P2PRanging::MessageTypes P2PRanging::_lastRxMsg;
 
 volatile bool P2PRanging::_haveUnhandledSentMsg;
 volatile bool P2PRanging::_haveUnhandledReceivedMsg;
@@ -30,6 +31,17 @@ float P2PRanging::_samplingRate;
 uint8_t P2PRanging::_myId;
 uint8_t P2PRanging::_commPartnerId;
 uint8_t P2PRanging::_rangingTargetId;
+unsigned P2PRanging::_numRangingsInitiationsSent;
+unsigned P2PRanging::_numRangingsInitiationsReceived;
+unsigned P2PRanging::_numRangingsCompletedSent;
+unsigned P2PRanging::_numRangingsCompletedReceived;
+unsigned P2PRanging::_numTimeouts;
+unsigned P2PRanging::_numResets;
+unsigned P2PRanging::_numMsgReceived;
+unsigned P2PRanging::_numMsgSent;
+unsigned P2PRanging::_numMsgSentInit;
+unsigned volatile P2PRanging::_numIRQReceived;
+unsigned volatile P2PRanging::_numIRQSent;
 
 perf_counter_t pc_TxCount(perf_alloc(PC_COUNT, "dw1000_txCount"));
 perf_counter_t pc_RxCount(perf_alloc(PC_COUNT, "dw1000_rxCount"));
@@ -76,21 +88,38 @@ P2PRanging::P2PRanging()
 	_lastActivityTime_ms = 0;
 
     _rangingTargetId = 0;
+
+    _numRangingsInitiationsSent = 0;
+    _numRangingsInitiationsReceived = 0;
+    _numRangingsCompletedSent = 0;
+    _numRangingsCompletedReceived = 0;
+    _numTimeouts = 0;
+    _numResets = 0;
+    _numMsgReceived = 0;
+    _numMsgSent = 0;
+    _numMsgSentInit = 0;
+
+    _numIRQReceived = 0;
+    _numIRQSent = 0;
 }
 
+static uint16_t networkIds;
 int P2PRanging::Initialize(uint8_t deviceId, uint16_t networkId)
 {
 	_myId = deviceId;
+    networkIds = networkId;
 	// initialize the driver
 	DW1000.begin();
 	if (DW1000.configure())
+	{
 		return -1;
+	}
 	// general configuration
 	DW1000.newConfiguration();
 	DW1000.setDefaults();
 	DW1000.setDeviceAddress(uint16_t(_myId));
 	DW1000.setNetworkId(networkId);
-	DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_ACCURACY); //mwm TODO why do other modes fail???
+	DW1000.enableMode(DW1000.MODE_SHORTDATA_FAST_ACCURACY); //mwm TODO why do other modes fail???
 	DW1000.commitConfiguration();
 
 	DW1000.enableAllLeds();
@@ -98,11 +127,22 @@ int P2PRanging::Initialize(uint8_t deviceId, uint16_t networkId)
 	// attach callback for (successfully) sent and received messages
 	DW1000.attachSentHandler(P2PRanging::handleSent);
 	DW1000.attachReceivedHandler(P2PRanging::handleReceived);
+//	DW1000.attachErrorHandler(P2PRanging::handleError);
+//	DW1000.attachReceiveFailedHandler(P2PRanging::handleReceiveFailed);
+//	DW1000.attachReceiveTimeoutHandler(P2PRanging::handleReceiveTimeout);
+//	DW1000.attachReceiveTimestampAvailableHandler(P2PRanging::handleReceiveTimestampAvailable);
 
 	DW1000.interruptOnReceived(true);
-	DW1000.interruptOnReceiveFailed(true);
-	DW1000.interruptOnReceiveTimeout(true);
+//	DW1000.interruptOnReceiveFailed(true);
+//	DW1000.interruptOnReceiveTimeout(true);
 	DW1000.interruptOnSent(true);
+
+	//try:
+    DW1000.interruptOnReceiveFailed(false);
+    DW1000.interruptOnReceiveTimestampAvailable(false);
+    DW1000.interruptOnAutomaticAcknowledgeTrigger(false);
+    DW1000.setReceiverAutoReenable(true);
+
 	DW1000.writeSystemEventMaskRegister();
 	resetInactive();
 
@@ -111,9 +151,36 @@ int P2PRanging::Initialize(uint8_t deviceId, uint16_t networkId)
 
 void P2PRanging::resetInactive()
 {
+    _numResets++;
+    DW1000.idle();
+
+    DW1000.clearReceiveStatus();
+    DW1000.clearReceiveTimestampAvailableStatus();
+    DW1000.clearTransmitStatus();
+
+//	DW1000.clearAllStatusHARD();
+
 	_expectedMsg = MSG_RANGING_INIT; //listen for this, if we don't know what else is going on.
 	noteActivity();
 	rangingReceiver();
+}
+
+void P2PRanging::clearSysStatus()
+{
+    DW1000.printStatus();
+	printf("go to idle\n");
+    DW1000.idle();
+    usleep(1000);
+//	printf("clearReceiveStatus\n");
+//    DW1000.clearReceiveStatus();
+//    usleep(1000);
+//	printf("clearReceiveTimestampAvailableStatus\n");
+//    DW1000.clearReceiveTimestampAvailableStatus();
+//    usleep(1000);
+	printf("clearTransmitStatus\n");
+    DW1000.clearTransmitStatus();
+    usleep(1000);
+    DW1000.printStatus();
 }
 
 void P2PRanging::handleSent()
@@ -121,6 +188,7 @@ void P2PRanging::handleSent()
 	// status change on sent success
 	_haveUnhandledSentMsg = true;
 	perf_count(pc_TxCount);
+	_numIRQSent++;
 }
 
 void P2PRanging::handleReceived()
@@ -128,7 +196,27 @@ void P2PRanging::handleReceived()
 	// status change on received success
 	_haveUnhandledReceivedMsg = true;
 	perf_count(pc_RxCount);
-	return;
+	_numIRQReceived++;
+}
+
+void P2PRanging::handleError()
+{
+
+}
+
+void P2PRanging::handleReceiveFailed()
+{
+
+}
+
+void P2PRanging::handleReceiveTimeout()
+{
+
+}
+
+void P2PRanging::handleReceiveTimestampAvailable()
+{
+
 }
 
 void P2PRanging::transmitRangingInit()
@@ -144,6 +232,7 @@ void P2PRanging::transmitRangingInit()
 	_txData[MSG_FIELD_TARGET_ID] = _commPartnerId;
 	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
+	_numMsgSentInit++;
 	_expectedMsg = MSG_RANGING_REPLY1;
 }
 
@@ -160,6 +249,7 @@ void P2PRanging::transmitRangingReply1()
 	DW1000.setDelay(deltaTime);
 	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
+	_numMsgSentInit++;
 	_expectedMsg = MSG_RANGING_REPLY2;
 }
 
@@ -179,6 +269,7 @@ void P2PRanging::transmitRangingReply2()
 	_timeRangingReply2Sent.getTimestamp(&_txData[MSG_FIELD_DATA_START] + 10);
 	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
+	_numMsgSentInit++;
 	_expectedMsg = MSG_RANGING_REPORT;
 }
 
@@ -194,6 +285,7 @@ void P2PRanging::transmitRangeReport(const uint32_t curRange_um)
     memcpy(&_txData[MSG_FIELD_DATA_START], &curRange_um, 4);
 	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
+	_numMsgSentInit++;
 	_expectedMsg = MSG_RANGING_INIT;
     //NOTE: cannot reset here, would cancel transmission resetInactive();
 }
@@ -208,6 +300,7 @@ void P2PRanging::transmitRangeFailed()
 	_txData[MSG_FIELD_TARGET_ID] = _commPartnerId;
 	DW1000.setTxData(_txData, LEN_DATA);
 	DW1000.startTransmit();
+	_numMsgSentInit++;
     //NOTE: cannot reset here, would cancel transmission resetInactive();
 }
 
@@ -215,13 +308,13 @@ void P2PRanging::rangingReceiver()
 {
 	DW1000.newReceive();
 	DW1000.setDefaults();
+
 	// so we don't need to restart the receiver manually
 	DW1000.receivePermanently(true);
 	DW1000.startReceive();
 }
 
-void print_message_str(P2PRanging::MessageTypes msg);
-void print_message_str(P2PRanging::MessageTypes msg){
+void P2PRanging::printMessageStr(P2PRanging::MessageTypes msg){
 	switch(msg){
 	case P2PRanging::MSG_RANGING_INIT:
 		printf("MSG_RANGING_INIT");
@@ -252,12 +345,14 @@ void P2PRanging::runLoop()
 
 	if (_haveUnhandledSentMsg)
 	{
+        _numMsgSent++;
 		perf_begin(pc_time_loopTxSec);
 		_haveUnhandledSentMsg = false;
 		switch (_lastTxMsg )//message ID
 		{
 		case MSG_RANGING_INIT:
 			DW1000.getTransmitTimestamp(_timeRangingInitSent);
+            _numRangingsInitiationsSent++;
             noteActivity();
             perf_begin(pc_time_SInit_RReply1);
             perf_end(pc_time_RRange_SInit);
@@ -280,6 +375,7 @@ void P2PRanging::runLoop()
             break;
 
 		case MSG_RANGING_REPORT:
+			_numRangingsCompletedSent++;
             perf_end(pc_time_RReply2_SRange);
             perf_begin(pc_time_SRange_RInit);
 			resetInactive();
@@ -300,6 +396,7 @@ void P2PRanging::runLoop()
 
 	if (_haveUnhandledReceivedMsg)
 	{
+        _numMsgReceived++;
 		perf_begin(pc_time_loopRxSec);
 		_haveUnhandledReceivedMsg = false;
 		// get message and parse
@@ -309,6 +406,7 @@ void P2PRanging::runLoop()
 		uint8_t senderId = _rxData[MSG_FIELD_SENDER_ID];
 		uint8_t targetId = _rxData[MSG_FIELD_TARGET_ID];
 
+        _lastRxMsg = msgId;
 		if(targetId != _myId){
 			//not for us.
 			//TODO: We should record this message anyway
@@ -319,9 +417,9 @@ void P2PRanging::runLoop()
 		{
 			// unexpected message, start over again
 //			printf("Rx unexpected message! expected <");
-//			print_message_str(_expectedMsg);
+//			printMessageStr(_expectedMsg);
 //			printf(">, received <");
-//			print_message_str(msgId);
+//			printMessageStr(msgId);
 //			printf(">\n");
 			_expectedMsg = MSG_RANGING_INIT;
             perf_count(pc_count_unexpectedMsg);
@@ -343,6 +441,7 @@ void P2PRanging::runLoop()
 
             perf_end(pc_time_LoopResponder);
             perf_begin(pc_time_LoopResponder);
+            _numRangingsInitiationsReceived++;
             break;
 		case MSG_RANGING_REPLY1:
 			if(_commPartnerId != senderId){
@@ -427,6 +526,7 @@ void P2PRanging::runLoop()
 			noteActivity();
             perf_end(pc_time_SReply2_RRange);
             perf_begin(pc_time_RRange_SInit);
+            _numRangingsCompletedReceived++;
             break;
 		case MSG_RANGING_FAILED:
             perf_count(pc_count_RangingFailed);
@@ -448,6 +548,7 @@ void P2PRanging::runLoop()
 	{
         perf_count(pc_timeout);
 		resetInactive();
+        _numTimeouts++;
 		if(_rangingTargetId){
 			transmitRangingInit(); //mwm todo: We should have a nicer way of deciding to initiate a conversation...
 		}
@@ -495,3 +596,23 @@ void P2PRanging::computeRangeSymmetric()
  * END RANGING ALGORITHMS
  * ----------------------
  */
+
+void P2PRanging::printStatus(){
+	printf("\n== P2PRanging status: ==\n");
+    printf("\tMy ID = %d, comm partner = %d, ranging target = %d\n", int(_myId), int(_commPartnerId), int(_rangingTargetId));
+    printf("\tLast Tx message type = ");
+    printMessageStr(_lastTxMsg);
+    printf("\n\tLast Rx message type = ");
+    printMessageStr(_lastRxMsg);
+    printf("\n\t expected next message = ");
+    printMessageStr(_expectedMsg);
+    printf("\n");
+    printf("\tNum ranging initations:  sent = %d, received = %d\n", int(_numRangingsInitiationsSent), int(_numRangingsInitiationsReceived));
+    printf("\tNum ranging completions: sent = %d, received = %d\n", int(_numRangingsCompletedSent), int(_numRangingsCompletedReceived));
+    printf("\tNum resets = %d, timeouts = %d\n", int(_numTimeouts), int(_numTimeouts));
+    printf("\tTotal num msg rx = %d, tx init = %d, tx complete = %d\n", int(_numMsgReceived), int(_numMsgSentInit), int(_numMsgSent));
+    printf("\tTotal num IRQ rx = %d, tx = %d\n", int(_numIRQReceived), int(_numIRQSent));
+    printf("----DW1000 driver status----\n");
+    DW1000.printStatus();
+    printf("\n\n");
+}

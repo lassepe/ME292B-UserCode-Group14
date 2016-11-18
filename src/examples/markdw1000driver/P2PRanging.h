@@ -2,7 +2,6 @@
 #include <stdint.h>
 
 #include "DW1000.h"
-#include "DW1000Device.h"
 #include "DW1000Constants.h"
 
 namespace DW1000NS{
@@ -30,8 +29,8 @@ public:
 	enum
 	{ //some constants
 		LEN_DATA = 19,
-		RESET_PERIOD_MS = 4,
-		DELAY_TIME_US = 600,
+		RESET_PERIOD_MS = 3,
+		DELAY_TIME_US = 300,
 	};
 
 	P2PRanging();
@@ -52,7 +51,7 @@ public:
 private:
 	static void noteActivity()
 	{
-		_lastActivityTime_ms = DW1000Device::getTimeMillis();
+		_lastActivityTime_ms = DW1000Class::getCPUTimeMillis();
 	}
 
 	static bool isRxMessageConsistent();

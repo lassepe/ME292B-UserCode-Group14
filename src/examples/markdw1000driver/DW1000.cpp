@@ -1819,3 +1819,10 @@ void DW1000Class::printStatus(){
     printf("\tIRQ GPIO pin = %d\n", int(stm32_gpioread(GPIO_EXPANSION_LPSDECK_IRQ)));
 
 }
+
+int32_t DW1000Class::getCPUTimeMillis(){
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (ts.tv_sec * 1000 + ts.tv_nsec/1000000);
+}
+

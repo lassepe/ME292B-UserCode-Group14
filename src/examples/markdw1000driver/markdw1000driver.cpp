@@ -47,10 +47,6 @@
 
 #include <uORB/uORB.h>
 
-#include "DW1000Device.h"
-
-#include "testFunctions.hpp"
-
 #include "P2PRanging.h"
 
 extern "C" __EXPORT int mtest_main(int argc, char *argv[]);
@@ -58,7 +54,6 @@ extern "C" __EXPORT int mtest_main(int argc, char *argv[]);
 static bool thread_should_exit = false;
 static bool thread_running = false;
 static bool thread_should_print_status = false;
-static bool thread_should_clearSysStatus = false;
 static int daemon_task;
 
 static uint8_t targetId = 0;
@@ -113,16 +108,6 @@ int mtest_main(int argc, char *argv[])
 	if (!strcmp(argv[1], "status")) {
 		if (thread_running) {
             thread_should_print_status  = true;
-		} else {
-			warnx("\tnot started\n");
-		}
-
-		return 0;
-	}
-
-	if (!strcmp(argv[1], "clear")) {
-		if (thread_running) {
-			thread_should_clearSysStatus = true;
 		} else {
 			warnx("\tnot started\n");
 		}
@@ -215,11 +200,6 @@ int mtest_thread_main(int argc, char *argv[])
 			if(thread_should_exit)
 			{
 				break;
-			}
-			if(thread_should_clearSysStatus)
-			{
-                thread_should_clearSysStatus = false;
-                p2pRanging.clearSysStatus();
 			}
 			if(thread_should_print_status)
 			{

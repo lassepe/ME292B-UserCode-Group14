@@ -33,7 +33,6 @@
 //#include <Arduino.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include "DW1000CompileOptions.h"
 
 class DW1000Time {
 public:

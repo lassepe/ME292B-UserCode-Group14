@@ -149,6 +149,7 @@ void P2PRanging::resetInactive()
     _numResets++;
     DW1000.idle();
 
+    //TODO: unclear why we need the below, but this helps with the resets...
     DW1000.clearReceiveStatus();
     DW1000.clearReceiveTimestampAvailableStatus();
     DW1000.clearTransmitStatus();
@@ -467,7 +468,7 @@ void P2PRanging::runLoop()
 				avgDistanceCount++;
 				// update sampling rate (each second)
 				_successRangingCount++;
-				int32_t curTime_ms = DW1000Device::getTimeMillis();
+				int32_t curTime_ms = DW1000Class::getCPUTimeMillis();
 				if (curTime_ms - _rangingCountPeriod > 1000)
 				{
 					_samplingRate = (1000.0f * _successRangingCount)
@@ -532,7 +533,7 @@ void P2PRanging::runLoop()
 		return;
 	}
 
-	if (DW1000Device::getTimeMillis() - _lastActivityTime_ms > RESET_PERIOD_MS)
+	if (DW1000Class::getCPUTimeMillis() - _lastActivityTime_ms > RESET_PERIOD_MS)
 	{
         perf_count(pc_timeout);
 		resetInactive();

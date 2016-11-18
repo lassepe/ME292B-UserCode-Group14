@@ -31,10 +31,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <visibility.h>
+#include <drivers/device/spi.h>
+
 #include "DW1000Constants.h"
 #include "DW1000Time.h"
-#include <drivers/device/spi.h>
-#include <visibility.h>
 
 namespace DW1000NS{
 
@@ -76,6 +78,8 @@ public:
 	static void getPrintableDeviceIdentifier(char msgBuffer[]);
 	
 	static uint32_t getDeviceIdentifier();
+
+    static int32_t getCPUTimeMillis();
 
 	/** 
 	Generates a String representation of the extended unique identifier (EUI) of the chip.

@@ -30,8 +30,8 @@ public:
 	enum
 	{ //some constants
 		LEN_DATA = 19,
-		DEFAULT_RESET_PERIOD_MS = 10,
-		DEFAULT_DELAY_TIME_US = 3000,
+		RESET_PERIOD_MS = 4,
+		DELAY_TIME_US = 600,
 	};
 
 	P2PRanging();
@@ -116,9 +116,6 @@ private:
 	static uint8_t _txData[LEN_DATA];
 	// watchdog and reset period
 	static volatile uint32_t _lastActivityTime_ms;
-	static uint32_t _resetPeriod_ms;
-	// reply times (same on both sides for symm. ranging)
-	static uint16_t _replyDelayTime_us;
 	// ranging counter (per second)
 	static uint16_t _successRangingCount;
 	static uint32_t _rangingCountPeriod;
@@ -127,6 +124,7 @@ private:
 	static uint8_t _myId;
 	static uint8_t _commPartnerId;//the Id of the other party we're talking to
 	static uint8_t _rangingTargetId ;//next target for ranging (zero if no-one).
+    static uint16_t _networkId;
 
 	static unsigned _numRangingsInitiationsSent;
 	static unsigned _numRangingsInitiationsReceived;

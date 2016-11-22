@@ -9,22 +9,22 @@ set(config_module_list
 	drivers/device
 	drivers/stm32
 	drivers/led
-	drivers/px4fmu
+	drivers/px4fmu #mwm: not sure what this does, can't easily remove
 	drivers/boards/crazyflie
 	drivers/mpu9250
 	drivers/lps25h
-	drivers/gps
-	modules/sensors
+	# drivers/gps
+	# modules/sensors
 
 	#
 	# System commands
 	#
-	systemcmds/bl_update
-	systemcmds/mixer
+	# systemcmds/bl_update
+	# systemcmds/mixer
+	# systemcmds/esc_calib
 	systemcmds/param
 	systemcmds/perf
 	systemcmds/pwm
-	systemcmds/esc_calib
 	systemcmds/reboot
 	systemcmds/top
 	systemcmds/config
@@ -36,12 +36,12 @@ set(config_module_list
 	#
 	# General system control
 	#
-	modules/commander
-	modules/load_mon
-	modules/navigator
+	# modules/commander
+	# modules/load_mon
+	# modules/navigator
 	modules/mavlink
 	#modules/gpio_led
-	modules/land_detector
+	# modules/land_detector
 
 	modules/dummy
 	modules/syslink
@@ -51,9 +51,9 @@ set(config_module_list
 	#
 	# Too high RAM usage due to static allocations
 	# modules/attitude_estimator_ekf
-	modules/attitude_estimator_q
-	modules/position_estimator_inav
-	modules/local_position_estimator
+	# modules/attitude_estimator_q
+	# modules/position_estimator_inav
+	# modules/local_position_estimator
 
 	#
 	# Vehicle Control
@@ -61,8 +61,8 @@ set(config_module_list
 	# modules/segway # XXX Needs GCC 4.7 fix
 	# modules/fw_pos_control_l1
 	# modules/fw_att_control
-	modules/mc_att_control
-	modules/mc_pos_control
+	# modules/mc_att_control
+	# modules/mc_pos_control
 	# modules/vtol_att_control
 
 	#
@@ -77,40 +77,31 @@ set(config_module_list
 	modules/systemlib
 	modules/systemlib/mixer
 	modules/uORB
-	modules/dataman
+	modules/dataman #required my mavlink
 
 	#
 	# Libraries
 	#
-	lib/controllib
+	# lib/ecl
+	# lib/external_lgpl
+	# lib/geo_lookup
+	# lib/launchdetection
+	# lib/terrain_estimation
+	# lib/runway_takeoff
+	# lib/tailsitter_recovery
+
+	lib/controllib #needed by systemlib
 	lib/mathlib
 	lib/mathlib/math/filter
 	lib/rc
-	lib/ecl
-	lib/external_lgpl
-	lib/geo
-	lib/geo_lookup
+	lib/geo #mwm needed for _wrap_pi, used by mavlink
 	lib/conversion
-	lib/launchdetection
-	lib/terrain_estimation
-	lib/runway_takeoff
-	lib/tailsitter_recovery
 	lib/DriverFramework/framework
 	platforms/nuttx
 
 	# had to add for cmake, not sure why wasn't in original config
 	platforms/common
 	platforms/nuttx/px4_layer
-
-	#
-	# OBC challenge
-	#
-	modules/bottle_drop
-
-	#
-	# Rover apps
-	#
-	examples/rover_steering_control
 
 	#
 	# Demo apps

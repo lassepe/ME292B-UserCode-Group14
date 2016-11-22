@@ -124,7 +124,6 @@ then
 	#
 	# Set default values
 	#
-	set HIL no
 	set VEHICLE_TYPE none
 	set MIXER none
 	set MIXER_AUX none
@@ -307,19 +306,6 @@ then
 		set FMU_MODE gpio_serial
 	fi
 
-	if [ $HIL == yes ]
-	then
-		set OUTPUT_MODE hil
-		if ver hwcmp PX4FMU_V1
-		then
-			set FMU_MODE serial
-		fi
-		unset HIL
-	else
-		unset HIL
-		gps start
-	fi
-
 	# waypoint storage
 	# REBOOTWORK this needs to start in parallel
 	if dataman start
@@ -330,19 +316,6 @@ then
 	# Sensors System (start before Commander so Preflight checks are properly run)
 	#
 	sh /etc/init.d/rc.sensors
-
-	# Needs to be this early for in-air-restarts
-	if [ $OUTPUT_MODE == hil ]
-	then
-	    commander start -hil
-	else
-	    commander start
-	fi
-
-	#
-	# Start CPU load monitor
-	#
-	load_mon start
 
 	#
 	# Start primary output
@@ -898,11 +871,6 @@ then
 	unset MIXER
 	unset MAV_TYPE
 	unset OUTPUT_MODE
-
-	#
-	# Start the navigator
-	#
-	navigator start
 
 	#
 	# Generic setup (autostart ID not found)

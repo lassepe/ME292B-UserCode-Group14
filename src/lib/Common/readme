@@ -1,0 +1,5 @@
+Create a symbolic link to here from the GeneralCode repository, e.g.:
+cd PX4-firmware/src/lib/Common
+ln -s ~/Documents/Repos/LabCode/GeneralCode/Common/Common/ Common
+
+You should have a folder named "Common" inside the folder "Common".

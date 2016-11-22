@@ -97,6 +97,10 @@ set(config_module_list
 	lib/geo #mwm needed for _wrap_pi, used by mavlink
 	lib/conversion
 	lib/DriverFramework/framework
+	
+	lib/Common
+	lib/Components
+	
 	platforms/nuttx
 
 	# had to add for cmake, not sure why wasn't in original config

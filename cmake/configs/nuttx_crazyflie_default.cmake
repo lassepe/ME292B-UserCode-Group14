@@ -129,6 +129,7 @@ set(config_module_list
 
 	# Hardware test
 	#examples/hwtest
+	Apps/QuadcopterLogic
 )
 
 set(config_extra_builtin_cmds

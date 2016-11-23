@@ -129,6 +129,8 @@ set(config_module_list
 
 	# Hardware test
 	#examples/hwtest
+
+	examples/markdw1000driver
 )
 
 include(../src/Apps/apps)

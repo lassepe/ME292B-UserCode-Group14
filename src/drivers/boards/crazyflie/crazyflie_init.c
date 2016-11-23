@@ -125,11 +125,53 @@ __END_DECLS
  *
  ************************************************************************************/
 
+__EXPORT void stm32_spiinitialize(void);
+__EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool selected);
+__EXPORT uint8_t stm32_spi1status(FAR struct spi_dev_s *dev, enum spi_dev_e devid);
+
+__EXPORT void stm32_spiinitialize(void)
+{
+	stm32_configgpio(GPIO_EXPANSION_LPSDECK_CS);
+
+	/* De-activate all peripherals,
+	 * required for some peripheral
+	 * state machines
+	 */
+	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);
+}
+
+__EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool selected)
+{
+	/* SPI select is active low, so write !selected to select the device */
+
+	switch (devid) {
+	case PX4_SPIDEV_EXPANSION_DW1000_DEVID:
+		/* Making sure the other peripherals are not selected */
+		px4_arch_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, !selected);
+		break;
+
+	default:
+		break;
+
+	}
+}
+
+
+__EXPORT uint8_t stm32_spi1status(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
+{
+	return SPI_STATUS_PRESENT;
+}
+
+
 __EXPORT void
 stm32_boardinitialize(void)
 {
+	//mwm: init SPI
+    stm32_spiinitialize();
+
 	/* configure LEDs */
 	up_ledinit();
+
 }
 
 /****************************************************************************
@@ -141,6 +183,8 @@ stm32_boardinitialize(void)
  ****************************************************************************/
 
 #include <math.h>
+
+//static struct spi_dev_s *spi1=0;
 
 __EXPORT int nsh_archinitialize(void)
 {
@@ -179,7 +223,22 @@ __EXPORT int nsh_archinitialize(void)
 	led_off(LED_TX);
 	led_off(LED_RX);
 
+	/*
+	spi1 = up_spiinitialize(PX4_SPIDEV_EXPANSION_DW1000_PORT);
+	if (!spi1) {
+		message("[boot] FAILED to initialize SPI port 1\r\n");
+		up_ledon(LED_RED);
+		led_on(LED_RED);
+		return -ENODEV;
+	}
+	// Default SPI1 to 1MHz and de-assert the known chip selects.
+	SPI_SETFREQUENCY(spi1, 10000000);
+	SPI_SETBITS(spi1, 8);
+	SPI_SETMODE(spi1, SPIDEV_MODE0);
+	SPI_SELECT(spi1, PX4_SPIDEV_EXPANSION_DW1000_DEVID, false);
+	*/
 
+	up_udelay(20);
 
 	result = board_i2c_initialize();
 

@@ -98,8 +98,8 @@ set(config_module_list
 	lib/conversion
 	lib/DriverFramework/framework
 	
-	lib/Common
-	lib/Components
+	#lib/Common
+	#lib/Components
 	
 	platforms/nuttx
 
@@ -131,7 +131,7 @@ set(config_module_list
 	#examples/hwtest
 )
 
-include(../src/Apps/apps)
+#include(../src/Apps/apps)
 
 set(config_extra_builtin_cmds
 	serdis

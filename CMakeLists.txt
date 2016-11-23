@@ -417,20 +417,6 @@ add_subdirectory(src/firmware/${OS})
 if (NOT "${OS}" STREQUAL "nuttx")
 endif()
 
-##mwm: ugly hacks!
-include(../src/Apps/apps)
-####
-set(module lib/Common)
-add_subdirectory(src/${module})
-px4_mangle_name(${module} mangled_name)
-list(APPEND module_libraries ${mangled_name})
-####
-set(module lib/Components)
-add_subdirectory(src/${module})
-px4_mangle_name(${module} mangled_name)
-list(APPEND module_libraries ${mangled_name})
-###end mwm ugly hacks
-
 if (config_io_board)
 	add_subdirectory(src/modules/px4iofirmware)
 endif()

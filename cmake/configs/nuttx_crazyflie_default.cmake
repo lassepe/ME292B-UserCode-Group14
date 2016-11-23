@@ -98,8 +98,8 @@ set(config_module_list
 	lib/conversion
 	lib/DriverFramework/framework
 	
-	lib/Common
-	lib/Components
+	#lib/Common
+	#lib/Components
 	
 	platforms/nuttx
 

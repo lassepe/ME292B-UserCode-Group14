@@ -1,7 +1,0 @@
-Create a symbolic link to here from the GeneralCode repository, e.g.:
-cd PX4-firmware/src/lib/Components
-ln -s ~/Documents/Repos/LabCode/GeneralCode/Components/Components/ Components
-
-ln -s ~/Documents/Repos/LabCode/GeneralCode/Embedded/LinkCMakeLists/Components/CMakeLists.txt  ~/Documents/Repos/LabCode/PX4-firmware/src/lib/Components/CMakeLists.txt
-
-You should have a folder named "Common" inside the folder "Common".

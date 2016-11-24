@@ -123,6 +123,7 @@ set(msg_file_names
 	vehicle_roi.msg
 	mount_status.msg
 	ranging_report.msg
+	ranging_request.msg
 	)
 
 # Get absolute paths

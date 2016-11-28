@@ -664,7 +664,7 @@ function(px4_add_common_flags)
 		endif()
 	else()
 		list(APPEND warnings
-			-Werror=unused-but-set-variable
+			#-Werror=unused-but-set-variable
 			-Wformat=1
 			#-Wlogical-op # very verbose due to eigen
 			-Wdouble-promotion

@@ -632,7 +632,6 @@ function(px4_add_common_flags)
 
 	set(warnings
 		-Wall
-		-Werror
 		-Wextra
 		-Wno-sign-compare
 		-Wshadow
@@ -643,7 +642,6 @@ function(px4_add_common_flags)
 		-Werror=format-security
 		-Werror=array-bounds
 		-Wfatal-errors
-		-Werror=unused-variable
 		-Werror=reorder
 		-Werror=uninitialized
 		-Werror=init-self

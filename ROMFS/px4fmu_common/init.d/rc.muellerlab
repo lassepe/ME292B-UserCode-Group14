@@ -1,0 +1,6 @@
+#!nsh
+#
+# Startup script for muellerlab
+#
+
+# ranging start # start the UWB app

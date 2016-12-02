@@ -210,7 +210,7 @@ fi
 if ver hwcmp CRAZYFLIE
 then
 	# Onboard I2C
-	if mpu9250 -R 12 start
+	if mpu9250 -R 4 start
 	then
 	fi
 

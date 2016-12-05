@@ -62,6 +62,7 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/input_rc.h>
+#include <uORB/topics/raw_radio.h>
 
 #include <board_config.h>
 
@@ -87,6 +88,10 @@ Syslink::Syslink() :
 	nullrate(0),
 	rxrate(0),
 	txrate(0),
+	raw_handled(0),
+	commander_handled(0),
+	mav_handled(0),
+	other_handled(0),
 	_syslink_task(-1),
 	_task_running(false),
 	_count(0),
@@ -312,6 +317,10 @@ Syslink::task_main()
 
 	syslink_parse_init(&state);
 
+	/* advertise raw_radio_data topic */
+	struct raw_radio_s raw_radio;
+	memset(&raw_radio, 0, sizeof(raw_radio));
+	orb_advert_t raw_radio_pub = orb_advertise(ORB_ID(raw_radio), &raw_radio);
 
 	while (_task_running) {
 		/* wait for sensor update of 1 file descriptor for 1000 ms (1 second) */
@@ -338,7 +347,7 @@ Syslink::task_main()
 
 				for (int i = 0; i < nread; i++) {
 					if (syslink_parse_char(&state, buf[i], &msg)) {
-						handle_message(&msg);
+						handle_message(&msg, raw_radio_pub, raw_radio);
 					}
 				}
 			}
@@ -350,7 +359,7 @@ Syslink::task_main()
 }
 
 void
-Syslink::handle_message(syslink_message_t *msg)
+Syslink::handle_message(syslink_message_t *msg, orb_advert_t raw_radio_pub, raw_radio_s raw_radio)
 {
 	hrt_abstime t = hrt_absolute_time();
 
@@ -415,7 +424,7 @@ Syslink::handle_message(syslink_message_t *msg)
 		_rssi = 140 - rssi * 100 / (100 - 40);
 
 	} else if (msg->type == SYSLINK_RADIO_RAW) {
-		handle_raw(msg);
+		handle_raw(msg, raw_radio_pub, raw_radio);
 		_lastrxtime = t;
 
 	} else if ((msg->type & SYSLINK_GROUP) == SYSLINK_RADIO) {
@@ -472,9 +481,10 @@ Syslink::handle_message(syslink_message_t *msg)
 }
 
 void
-Syslink::handle_raw(syslink_message_t *sys)
+Syslink::handle_raw(syslink_message_t *sys, orb_advert_t raw_radio_pub, raw_radio_s raw_radio)
 {
 	crtp_message_t *c = (crtp_message_t *) &sys->length;
+	raw_handled++;
 
 	if (CRTP_NULL(*c)) {
 		// TODO: Handle bootloader messages if possible
@@ -482,6 +492,8 @@ Syslink::handle_raw(syslink_message_t *sys)
 		_null_count++;
 
 	} else if (c->port == CRTP_PORT_COMMANDER) {
+
+		commander_handled++;
 
 		crtp_commander *cmd = (crtp_commander *) &c->data[0];
 
@@ -516,11 +528,19 @@ Syslink::handle_raw(syslink_message_t *sys)
 		}
 
 	} else if (c->port == CRTP_PORT_MAVLINK) {
+		mav_handled++;
+
 		_count_in++;
 		/* Pipe to Mavlink bridge */
 		_bridge->pipe_message(c);
 
+		/* Publish to raw_radio uORB topic */
+		memcpy(raw_radio.data, c->data, sizeof(c->data));
+		orb_publish(ORB_ID(raw_radio), raw_radio_pub, &raw_radio);
+
 	} else {
+		other_handled++;
+
 		handle_raw_other(sys);
 	}
 
@@ -680,6 +700,12 @@ void status()
 	printf("- total rx: %d p/s\n", g_syslink->pktrate);
 	printf("- radio rx: %d p/s (%d null)\n", g_syslink->rxrate, g_syslink->nullrate);
 	printf("- radio tx: %d p/s\n\n", g_syslink->txrate);
+
+	// Mine
+	printf("Raw Handled: %d\n", g_syslink->raw_handled);
+	printf("Commander Handled: %d\n", g_syslink->commander_handled);
+	printf("Mav Handled: %d\n", g_syslink->mav_handled);
+	printf("Other Handled: %d\n", g_syslink->other_handled);
 
 	int deckfd = open(DECK_DEVICE_PATH, O_RDONLY);
 	int ndecks = 0; ioctl(deckfd, DECKIOGNUM, (unsigned long) &ndecks);

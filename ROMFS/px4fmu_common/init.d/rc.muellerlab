@@ -4,3 +4,5 @@
 #
 
 ranging start # start the UWB app
+cf_motors start
+quad start

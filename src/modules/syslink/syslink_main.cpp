@@ -88,10 +88,6 @@ Syslink::Syslink() :
 	nullrate(0),
 	rxrate(0),
 	txrate(0),
-	raw_handled(0),
-	commander_handled(0),
-	mav_handled(0),
-	other_handled(0),
 	_syslink_task(-1),
 	_task_running(false),
 	_count(0),
@@ -442,7 +438,7 @@ Syslink::handle_message(syslink_message_t *msg, orb_advert_t raw_radio_pub, raw_
 	// Send queued messages
 	if (!_queue.empty()) {
 		_queue.get(msg, sizeof(syslink_message_t));
-		send_message(msg);
+		// send_message(msg);
 	}
 
 
@@ -484,7 +480,6 @@ void
 Syslink::handle_raw(syslink_message_t *sys, orb_advert_t raw_radio_pub, raw_radio_s raw_radio)
 {
 	crtp_message_t *c = (crtp_message_t *) &sys->length;
-	raw_handled++;
 
 	if (CRTP_NULL(*c)) {
 		// TODO: Handle bootloader messages if possible
@@ -492,8 +487,6 @@ Syslink::handle_raw(syslink_message_t *sys, orb_advert_t raw_radio_pub, raw_radi
 		_null_count++;
 
 	} else if (c->port == CRTP_PORT_COMMANDER) {
-
-		commander_handled++;
 
 		crtp_commander *cmd = (crtp_commander *) &c->data[0];
 
@@ -528,7 +521,6 @@ Syslink::handle_raw(syslink_message_t *sys, orb_advert_t raw_radio_pub, raw_radi
 		}
 
 	} else if (c->port == CRTP_PORT_MAVLINK) {
-		mav_handled++;
 
 		_count_in++;
 		/* Pipe to Mavlink bridge */
@@ -538,14 +530,16 @@ Syslink::handle_raw(syslink_message_t *sys, orb_advert_t raw_radio_pub, raw_radi
 		memcpy(raw_radio.data, c->data, sizeof(c->data));
 		orb_publish(ORB_ID(raw_radio), raw_radio_pub, &raw_radio);
 
-	} else {
-		other_handled++;
+		// Some weird shit
+		send_message(sys);
 
-		handle_raw_other(sys);
+	} else {
+		;
+		// handle_raw_other(sys);
 	}
 
 	// Allow one raw message to be sent from the queue
-	send_queued_raw_message();
+	// send_queued_raw_message();
 }
 
 
@@ -700,12 +694,6 @@ void status()
 	printf("- total rx: %d p/s\n", g_syslink->pktrate);
 	printf("- radio rx: %d p/s (%d null)\n", g_syslink->rxrate, g_syslink->nullrate);
 	printf("- radio tx: %d p/s\n\n", g_syslink->txrate);
-
-	// Mine
-	printf("Raw Handled: %d\n", g_syslink->raw_handled);
-	printf("Commander Handled: %d\n", g_syslink->commander_handled);
-	printf("Mav Handled: %d\n", g_syslink->mav_handled);
-	printf("Other Handled: %d\n", g_syslink->other_handled);
 
 	int deckfd = open(DECK_DEVICE_PATH, O_RDONLY);
 	int ndecks = 0; ioctl(deckfd, DECKIOGNUM, (unsigned long) &ndecks);

@@ -74,12 +74,6 @@ public:
 	int nullrate;
 	int rxrate;
 	int txrate;
-	
-	// Debug variables for main loop
-	int raw_handled;
-	int commander_handled;
-	int mav_handled;
-	int other_handled;
 
 private:
 

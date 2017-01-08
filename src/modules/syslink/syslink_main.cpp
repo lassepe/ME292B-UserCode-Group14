@@ -62,7 +62,7 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/input_rc.h>
-#include <uORB/topics/raw_radio.h>
+#include <uORB/topics/radio_received.h>
 
 #include <board_config.h>
 
@@ -313,10 +313,10 @@ Syslink::task_main()
 
 	syslink_parse_init(&state);
 
-	/* advertise raw_radio_data topic */
-	struct raw_radio_s raw_radio;
-	memset(&raw_radio, 0, sizeof(raw_radio));
-	orb_advert_t raw_radio_pub = orb_advertise(ORB_ID(raw_radio), &raw_radio);
+	/* advertise radio_received_data topic */
+	struct radio_received_s radio_received;
+	memset(&radio_received, 0, sizeof(radio_received));
+	orb_advert_t radio_received_pub = orb_advertise(ORB_ID(radio_received), &radio_received);
 
 	while (_task_running) {
 		/* wait for sensor update of 1 file descriptor for 1000 ms (1 second) */
@@ -343,7 +343,7 @@ Syslink::task_main()
 
 				for (int i = 0; i < nread; i++) {
 					if (syslink_parse_char(&state, buf[i], &msg)) {
-						handle_message(&msg, raw_radio_pub, raw_radio);
+						handle_message(&msg, radio_received_pub, radio_received);
 					}
 				}
 			}
@@ -355,7 +355,7 @@ Syslink::task_main()
 }
 
 void
-Syslink::handle_message(syslink_message_t *msg, orb_advert_t raw_radio_pub, raw_radio_s raw_radio)
+Syslink::handle_message(syslink_message_t *msg, orb_advert_t radio_received_pub, radio_received_s radio_received)
 {
 	hrt_abstime t = hrt_absolute_time();
 
@@ -420,7 +420,7 @@ Syslink::handle_message(syslink_message_t *msg, orb_advert_t raw_radio_pub, raw_
 		_rssi = 140 - rssi * 100 / (100 - 40);
 
 	} else if (msg->type == SYSLINK_RADIO_RAW) {
-		handle_raw(msg, raw_radio_pub, raw_radio);
+		handle_raw(msg, radio_received_pub, radio_received);
 		_lastrxtime = t;
 
 	} else if ((msg->type & SYSLINK_GROUP) == SYSLINK_RADIO) {
@@ -477,7 +477,7 @@ Syslink::handle_message(syslink_message_t *msg, orb_advert_t raw_radio_pub, raw_
 }
 
 void
-Syslink::handle_raw(syslink_message_t *sys, orb_advert_t raw_radio_pub, raw_radio_s raw_radio)
+Syslink::handle_raw(syslink_message_t *sys, orb_advert_t radio_received_pub, radio_received_s radio_received)
 {
 	crtp_message_t *c = (crtp_message_t *) &sys->length;
 
@@ -526,9 +526,9 @@ Syslink::handle_raw(syslink_message_t *sys, orb_advert_t raw_radio_pub, raw_radi
 		/* Pipe to Mavlink bridge */
 		_bridge->pipe_message(c);
 
-		/* Publish to raw_radio uORB topic */
-		memcpy(raw_radio.data, c->data, sizeof(c->data));
-		orb_publish(ORB_ID(raw_radio), raw_radio_pub, &raw_radio);
+		/* Publish to radio_received uORB topic */
+		memcpy(radio_received.data, c->data, sizeof(c->data));
+		orb_publish(ORB_ID(radio_received), radio_received_pub, &radio_received);
 
 		// Some weird shit
 		send_message(sys);

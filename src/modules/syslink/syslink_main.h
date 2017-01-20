@@ -40,6 +40,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/radio_received.h>
+#include <uORB/topics/radio_send.h>
 
 #include "syslink.h"
 #include "crtp.h"
@@ -74,6 +75,9 @@ public:
 	int nullrate;
 	int rxrate;
 	int txrate;
+
+	int bailed;
+	int receivered;
 
 private:
 

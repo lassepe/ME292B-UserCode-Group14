@@ -62,7 +62,6 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/input_rc.h>
-#include <uORB/topics/radio_received.h>
 
 #include <board_config.h>
 
@@ -88,6 +87,8 @@ Syslink::Syslink() :
 	nullrate(0),
 	rxrate(0),
 	txrate(0),
+	bailed(0),
+	receivered(0),
 	_syslink_task(-1),
 	_task_running(false),
 	_count(0),
@@ -298,10 +299,17 @@ Syslink::task_main()
 	set_datarate(rate);
 	set_address(addr);
 
+	/* _fd used for receiving incoming messages
+	   _rs (radio send) used for receiving messages to be sent to PC over radio */
+	int _rs = orb_subscribe(ORB_ID(radio_send));
+	orb_set_interval(_rs, 200);
 
-	px4_pollfd_struct_t fds[1];
+	px4_pollfd_struct_t fds[2];
 	fds[0].fd = _fd;
 	fds[0].events = POLLIN;
+	fds[1].fd = _rs;
+	fds[1].events = POLLIN;
+
 
 	int error_counter = 0;
 
@@ -319,7 +327,7 @@ Syslink::task_main()
 	orb_advert_t radio_received_pub = orb_advertise(ORB_ID(radio_received), &radio_received);
 
 	while (_task_running) {
-		/* wait for sensor update of 1 file descriptor for 1000 ms (1 second) */
+		/* wait for sensor update of 1 file descriptors for 1000 ms (1 second) */
 		int poll_ret = px4_poll(fds, 1, 1000);
 
 		/* handle the poll result */
@@ -346,6 +354,24 @@ Syslink::task_main()
 						handle_message(&msg, radio_received_pub, radio_received);
 					}
 				}
+
+			}
+
+			if (fds[1].revents & POLLIN) {
+				if ((nread = read(_rs, buf, sizeof(buf))) < 0) {
+					bailed++;
+					continue;
+				}
+				// Prepare custom syslink_message
+				msg.type = SYSLINK_RADIO_RAW;
+
+				// Prepare custom crtp_message, align with syslink_message via length/size fields
+				crtp_message_t *c = (crtp_message_t *) &(msg.length);
+				memcpy(buf, c->data, sizeof(c->data));
+				c->size = 1 + sizeof(c->data);
+				send_message(&msg);
+
+				receivered++;
 			}
 		}
 	}
@@ -523,15 +549,12 @@ Syslink::handle_raw(syslink_message_t *sys, orb_advert_t radio_received_pub, rad
 	} else if (c->port == CRTP_PORT_MAVLINK) {
 
 		_count_in++;
-		/* Pipe to Mavlink bridge */
+		// Pipe to Mavlink bridge
 		_bridge->pipe_message(c);
 
-		/* Publish to radio_received uORB topic */
+		// Publish to radio_received uORB topic
 		memcpy(radio_received.data, c->data, sizeof(c->data));
 		orb_publish(ORB_ID(radio_received), radio_received_pub, &radio_received);
-
-		// Some weird shit
-		send_message(sys);
 
 	} else {
 		;
@@ -764,6 +787,10 @@ void test()
 {
 	// TODO: Ensure battery messages are recent
 	// TODO: Read and write from memory to ensure it is working
+
+	printf("Bailed: %d\n", g_syslink->bailed);
+	printf("Receivered: %d\n", g_syslink->receivered);
+
 }
 
 

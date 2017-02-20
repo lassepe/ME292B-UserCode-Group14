@@ -79,6 +79,7 @@ __END_DECLS
 
 extern "C" { __EXPORT int syslink_main(int argc, char *argv[]); }
 
+const unsigned SEND_FREQUENCY = 1000;  //Hz
 
 Syslink *g_syslink = nullptr;
 
@@ -88,7 +89,11 @@ Syslink::Syslink() :
 	rxrate(0),
 	txrate(0),
 	bailed(0),
-	receivered(0),
+	write_buffer_count(0),
+	queue_count(0),
+	queue_check_count(0),
+	handle_message_count(0),
+	message_bridged(0),
 	_syslink_task(-1),
 	_task_running(false),
 	_count(0),
@@ -302,7 +307,7 @@ Syslink::task_main()
 	/* _fd used for receiving incoming messages
 	   _rs (radio send) used for receiving messages to be sent to PC over radio */
 	int _rs = orb_subscribe(ORB_ID(radio_send));
-	orb_set_interval(_rs, 200);
+	orb_set_interval(_rs, 1000 / SEND_FREQUENCY);
 
 	px4_pollfd_struct_t fds[2];
 	fds[0].fd = _fd;
@@ -327,8 +332,12 @@ Syslink::task_main()
 	orb_advert_t radio_received_pub = orb_advertise(ORB_ID(radio_received), &radio_received);
 
 	while (_task_running) {
+		// Debug
+		write_buffer_count = _writebuffer.count();
+		queue_count = _queue.count();
+
 		/* wait for sensor update of 1 file descriptors for 1000 ms (1 second) */
-		int poll_ret = px4_poll(fds, 1, 1000);
+		int poll_ret = px4_poll(fds, 2, 1000);
 
 		/* handle the poll result */
 		if (poll_ret == 0) {
@@ -354,24 +363,50 @@ Syslink::task_main()
 						handle_message(&msg, radio_received_pub, radio_received);
 					}
 				}
-
 			}
 
 			if (fds[1].revents & POLLIN) {
-				if ((nread = read(_rs, buf, sizeof(buf))) < 0) {
-					bailed++;
-					continue;
-				}
+				
 				// Prepare custom syslink_message
-				msg.type = SYSLINK_RADIO_RAW;
+				syslink_message_t msg2;
+				syslink_message_t *sys = &msg2;
+				sys->type = SYSLINK_RADIO_RAW;
+
+				/* copy raw data into local buffer */
+				struct radio_send_s raw;
+				memset(&raw, 0, sizeof(raw));
+				orb_copy(ORB_ID(radio_send), _rs, &raw);
 
 				// Prepare custom crtp_message, align with syslink_message via length/size fields
-				crtp_message_t *c = (crtp_message_t *) &(msg.length);
-				memcpy(buf, c->data, sizeof(c->data));
-				c->size = 1 + sizeof(c->data);
-				send_message(&msg);
+				crtp_message_t *c = (crtp_message_t *) &sys->length;
+				
+				/* Maximum data size is 30 bytes + 1 for the header, despite what crtp.h documentation says.
+				TODO: Figure out why this is. */
+				c->size = 1 + 30;
 
-				receivered++;
+				/* TODO: Figure out how to get values for channel/link without hardcoding header */
+				c->header = 0x80;
+				// c->channel = channel;
+				// c->link = 0;
+				c->port = CRTP_PORT_MAVLINK;
+
+				uint8_t *data_ptrs[4] = {raw.data1, raw.data2, raw.data3, raw.data4};
+				for (int i = 0; i < raw.numPackets; i++) {
+					memcpy(c->data, data_ptrs[i], sizeof(c->data));
+					_queue.force(sys);
+				}
+
+				// // Debug
+				// actual_sys = sys;
+				// actual_crtp = c;
+				// // send_message(sys);
+				
+				// memset(&dummy_string, 0, sizeof(dummy_string));
+				// for (int j = 0; j < sizeof(c->data); j++) {
+				// 	if (c->data[j] > 0 && c->data[j] < 128) {
+				// 		dummy_string[j] = c->data[j];
+				// 	}
+				// }
 			}
 		}
 	}
@@ -383,6 +418,7 @@ Syslink::task_main()
 void
 Syslink::handle_message(syslink_message_t *msg, orb_advert_t radio_received_pub, radio_received_s radio_received)
 {
+	handle_message_count++;
 	hrt_abstime t = hrt_absolute_time();
 
 	if (t - _lasttime > 1000000) {
@@ -463,8 +499,9 @@ Syslink::handle_message(syslink_message_t *msg, orb_advert_t radio_received_pub,
 
 	// Send queued messages
 	if (!_queue.empty()) {
+		queue_check_count++;
 		_queue.get(msg, sizeof(syslink_message_t));
-		// send_message(msg);
+		send_message(msg);
 	}
 
 
@@ -552,9 +589,21 @@ Syslink::handle_raw(syslink_message_t *sys, orb_advert_t radio_received_pub, rad
 		// Pipe to Mavlink bridge
 		_bridge->pipe_message(c);
 
+		message_bridged++;
 		// Publish to radio_received uORB topic
 		memcpy(radio_received.data, c->data, sizeof(c->data));
 		orb_publish(ORB_ID(radio_received), radio_received_pub, &radio_received);
+
+		// Debug
+		debug_sys = (syslink_message_t *) malloc(sizeof(syslink_message_t));
+		debug_crtp = (crtp_message_t *) malloc(sizeof(crtp_message_t));
+		memset(debug_sys, 0, sizeof(syslink_message_t));
+		memset(debug_crtp, 0, sizeof(crtp_message_t));
+
+		memcpy(debug_sys, sys, sizeof(syslink_message_t));
+		memcpy(debug_crtp, c, sizeof(crtp_message_t));
+
+		// send_message(sys);
 
 	} else {
 		;
@@ -669,6 +718,7 @@ Syslink::send_message(syslink_message_t *msg)
 	send_bytes(&msg->length, sizeof(msg->length));
 	send_bytes(&msg->data, msg->length);
 	send_bytes(&msg->cksum, sizeof(msg->cksum));
+	bailed++;
 	return 0;
 }
 
@@ -788,9 +838,87 @@ void test()
 	// TODO: Ensure battery messages are recent
 	// TODO: Read and write from memory to ensure it is working
 
-	printf("Bailed: %d\n", g_syslink->bailed);
-	printf("Receivered: %d\n", g_syslink->receivered);
+	printf("send_message() count: %d\n", g_syslink->bailed);
+	printf("queue_count: %d\n", g_syslink->queue_count);
+	printf("queue_check_count: %d\n", g_syslink->queue_check_count);
+	// printf("write_buffer_count: %d\n", g_syslink->write_buffer_count);
+	printf("handle_message_count: %d\n", g_syslink->handle_message_count);
+	printf("message bridged: %d\n", g_syslink->message_bridged);
+	// printf("Dummy: %s\n", g_syslink->dummy_string);
+	printf("\n");
 
+	printf("CRTP Vars\n");
+	printf("Size: %u\n", unsigned(g_syslink->debug_crtp->size));
+	printf("Header: %u\n", unsigned(g_syslink->debug_crtp->header));
+	printf("Channel: %u\n", unsigned(g_syslink->debug_crtp->channel));
+	printf("Link: %u\n", unsigned(g_syslink->debug_crtp->link));
+	printf("Port: %u\n", unsigned(g_syslink->debug_crtp->port));
+	printf("\n");
+	printf("SYS Vars\n");
+	printf("Type: %u\n", unsigned(g_syslink->debug_sys->type));
+	printf("Length: %u\n", unsigned(g_syslink->debug_sys->length));
+	printf("Checksum_0: %u\n", unsigned(g_syslink->debug_sys->cksum[0]));
+	printf("Checksum_1: %u\n", unsigned(g_syslink->debug_sys->cksum[1]));
+	printf("\n");
+
+	printf("CRTP Vars\n");
+	printf("Size: %u\n", unsigned(g_syslink->actual_crtp->size));
+	printf("Header: %u\n", unsigned(g_syslink->actual_crtp->header));
+	printf("Channel: %u\n", unsigned(g_syslink->actual_crtp->channel));
+	printf("Link: %u\n", unsigned(g_syslink->actual_crtp->link));
+	printf("Port: %u\n", unsigned(g_syslink->actual_crtp->port));
+	printf("\n");
+	printf("SYS Vars\n");
+	printf("Type: %u\n", unsigned(g_syslink->actual_sys->type));
+	printf("Length: %u\n", unsigned(g_syslink->actual_sys->length));
+	printf("Checksum_0: %u\n", unsigned(g_syslink->actual_sys->cksum[0]));
+	printf("Checksum_1: %u\n", unsigned(g_syslink->actual_sys->cksum[1]));
+
+	union u_sys {
+		syslink_message_t sys;
+		unsigned char c[sizeof(syslink_message_t)];
+	};
+
+	printf("Syslink\n");
+	printf("Debug:  ");
+	union u_sys debug_u_sys;
+	debug_u_sys.sys = *(g_syslink->debug_sys);
+	for (size_t i = 0; i < sizeof(syslink_message_t); ++i) {
+		printf("%02x", debug_u_sys.c[i]);
+	}
+	printf("\n");
+
+	printf("Actual: ");
+	union u_sys actual_u_sys;
+	actual_u_sys.sys = *(g_syslink->actual_sys);
+	for (size_t i = 0; i < sizeof(syslink_message_t); ++i) {
+		printf("%02x", actual_u_sys.c[i]);
+	}
+	printf("\n");
+
+
+	union u_crtp {
+		crtp_message_t crtp;
+		unsigned char c[sizeof(crtp_message_t)];
+	};
+
+	printf("Crtp\n");
+	printf("Debug:  ");
+	union u_crtp debug_u_crtp;
+	debug_u_crtp.crtp = *(g_syslink->debug_crtp);
+	for (size_t i = 0; i < sizeof(crtp_message_t); ++i) {
+		printf("%02x", debug_u_crtp.c[i]);
+	}
+	printf("\n");
+
+	printf("Actual: ");
+	union u_crtp actual_u_crtp;
+	actual_u_crtp.crtp = *(g_syslink->actual_crtp);
+	for (size_t i = 0; i < sizeof(crtp_message_t); ++i) {
+		printf("%02x", actual_u_crtp.c[i]);
+	}
+	printf("\n");
+	exit(0);
 }
 
 

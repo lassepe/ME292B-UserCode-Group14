@@ -76,8 +76,18 @@ public:
 	int rxrate;
 	int txrate;
 
+	// Debug
 	int bailed;
-	int receivered;
+	int write_buffer_count;
+	int queue_count;
+	int queue_check_count;
+	int handle_message_count;
+	int message_bridged;
+	char dummy_string[64];
+	syslink_message_t *debug_sys;
+	crtp_message_t *debug_crtp;
+	syslink_message_t *actual_sys;
+	crtp_message_t *actual_crtp;
 
 private:
 

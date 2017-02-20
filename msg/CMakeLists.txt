@@ -126,6 +126,7 @@ set(msg_file_names
 	ranging_request.msg
 	radio_received.msg
 	radio_send.msg
+	radio_send_ready.msg
 	)
 
 # Get absolute paths

@@ -326,10 +326,13 @@ Syslink::task_main()
 
 	syslink_parse_init(&state);
 
-	/* advertise radio_received_data topic */
-	// struct radio_received_s radio_received;
+	// Advertise radio_received_data topic
 	memset(&_radio_received, 0, sizeof(_radio_received));
 	_radio_received_pub = orb_advertise(ORB_ID(radio_received), &_radio_received);
+
+	// Advertise radio_send_ready topic
+	memset(&_radio_send_ready, 0, sizeof(_radio_send_ready));
+	_radio_send_ready_pub = orb_advertise(ORB_ID(radio_send_ready), &_radio_send_ready);
 
 	while (_task_running) {
 		// Debug
@@ -366,7 +369,10 @@ Syslink::task_main()
 			}
 
 			if (fds[1].revents & POLLIN) {
-				
+				_radio_send_ready.is_ready = false;
+				orb_publish(ORB_ID(radio_send_ready), _radio_send_ready_pub, &_radio_send_ready);
+
+
 				// Prepare custom syslink_message
 				syslink_message_t msg2;
 				syslink_message_t *sys = &msg2;
@@ -395,6 +401,9 @@ Syslink::task_main()
 					memcpy(c->data, data_ptrs[i], sizeof(c->data));
 					_queue.force(sys);
 				}
+
+				_radio_send_ready.is_ready = true;
+				orb_publish(ORB_ID(radio_send_ready), _radio_send_ready_pub, &_radio_send_ready);
 
 				// // Debug
 				// actual_sys = sys;

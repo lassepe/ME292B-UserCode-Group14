@@ -41,6 +41,7 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/radio_received.h>
 #include <uORB/topics/radio_send.h>
+#include <uORB/topics/radio_send_ready.h>
 
 #include "syslink.h"
 #include "crtp.h"
@@ -92,6 +93,8 @@ public:
 	// Radio communication
 	struct radio_received_s _radio_received;
 	orb_advert_t _radio_received_pub;
+	struct radio_send_ready_s _radio_send_ready;
+	orb_advert_t _radio_send_ready_pub;
 
 private:
 

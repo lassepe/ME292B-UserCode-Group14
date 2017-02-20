@@ -327,9 +327,9 @@ Syslink::task_main()
 	syslink_parse_init(&state);
 
 	/* advertise radio_received_data topic */
-	struct radio_received_s radio_received;
-	memset(&radio_received, 0, sizeof(radio_received));
-	orb_advert_t radio_received_pub = orb_advertise(ORB_ID(radio_received), &radio_received);
+	// struct radio_received_s radio_received;
+	memset(&_radio_received, 0, sizeof(_radio_received));
+	_radio_received_pub = orb_advertise(ORB_ID(radio_received), &_radio_received);
 
 	while (_task_running) {
 		// Debug
@@ -360,7 +360,7 @@ Syslink::task_main()
 
 				for (int i = 0; i < nread; i++) {
 					if (syslink_parse_char(&state, buf[i], &msg)) {
-						handle_message(&msg, radio_received_pub, radio_received);
+						handle_message(&msg);
 					}
 				}
 			}
@@ -416,7 +416,7 @@ Syslink::task_main()
 }
 
 void
-Syslink::handle_message(syslink_message_t *msg, orb_advert_t radio_received_pub, radio_received_s radio_received)
+Syslink::handle_message(syslink_message_t *msg)
 {
 	handle_message_count++;
 	hrt_abstime t = hrt_absolute_time();
@@ -482,7 +482,7 @@ Syslink::handle_message(syslink_message_t *msg, orb_advert_t radio_received_pub,
 		_rssi = 140 - rssi * 100 / (100 - 40);
 
 	} else if (msg->type == SYSLINK_RADIO_RAW) {
-		handle_raw(msg, radio_received_pub, radio_received);
+		handle_raw(msg);
 		_lastrxtime = t;
 
 	} else if ((msg->type & SYSLINK_GROUP) == SYSLINK_RADIO) {
@@ -540,7 +540,7 @@ Syslink::handle_message(syslink_message_t *msg, orb_advert_t radio_received_pub,
 }
 
 void
-Syslink::handle_raw(syslink_message_t *sys, orb_advert_t radio_received_pub, radio_received_s radio_received)
+Syslink::handle_raw(syslink_message_t *sys)
 {
 	crtp_message_t *c = (crtp_message_t *) &sys->length;
 
@@ -591,8 +591,8 @@ Syslink::handle_raw(syslink_message_t *sys, orb_advert_t radio_received_pub, rad
 
 		message_bridged++;
 		// Publish to radio_received uORB topic
-		memcpy(radio_received.data, c->data, sizeof(c->data));
-		orb_publish(ORB_ID(radio_received), radio_received_pub, &radio_received);
+		memcpy(_radio_received.data, c->data, sizeof(c->data));
+		orb_publish(ORB_ID(radio_received), _radio_received_pub, &_radio_received);
 
 		// Debug
 		debug_sys = (syslink_message_t *) malloc(sizeof(syslink_message_t));
@@ -602,8 +602,6 @@ Syslink::handle_raw(syslink_message_t *sys, orb_advert_t radio_received_pub, rad
 
 		memcpy(debug_sys, sys, sizeof(syslink_message_t));
 		memcpy(debug_crtp, c, sizeof(crtp_message_t));
-
-		// send_message(sys);
 
 	} else {
 		;

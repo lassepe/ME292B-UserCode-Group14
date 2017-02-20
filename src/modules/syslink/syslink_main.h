@@ -89,6 +89,10 @@ public:
 	syslink_message_t *actual_sys;
 	crtp_message_t *actual_crtp;
 
+	// Radio communication
+	struct radio_received_s _radio_received;
+	orb_advert_t _radio_received_pub;
+
 private:
 
 	friend class SyslinkBridge;
@@ -99,8 +103,8 @@ private:
 	// Variables radio_received_pub and radio_received need to be passed to these functions
 	// in order to publish only data sent over the radio due to the control flow
 	// in the main loop
-	void handle_message(syslink_message_t *msg, orb_advert_t radio_received_pub, radio_received_s radio_received);
-	void handle_raw(syslink_message_t *sys, orb_advert_t radio_received_pub, radio_received_s radio_received);
+	void handle_message(syslink_message_t *msg);
+	void handle_raw(syslink_message_t *sys);
 
 	// Handles other types of messages that we don't really care about, but
 	// will be maintained with the bare minimum implementation for supporting

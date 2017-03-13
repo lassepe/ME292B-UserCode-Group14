@@ -330,9 +330,14 @@ Syslink::task_main()
 	memset(&_radio_received, 0, sizeof(_radio_received));
 	_radio_received_pub = orb_advertise(ORB_ID(radio_received), &_radio_received);
 
-	// Advertise radio_send_ready topic
+	// Advertise radio_send_ready topic and publish ready status
 	memset(&_radio_send_ready, 0, sizeof(_radio_send_ready));
 	_radio_send_ready_pub = orb_advertise(ORB_ID(radio_send_ready), &_radio_send_ready);
+	_radio_send_ready.is_ready = true;
+	orb_publish(ORB_ID(radio_send_ready), _radio_send_ready_pub, &_radio_send_ready);
+
+	// Flush queue for sending messages
+	_queue.flush();
 
 	while (_task_running) {
 		// Debug
@@ -371,7 +376,6 @@ Syslink::task_main()
 			if (fds[1].revents & POLLIN) {
 				_radio_send_ready.is_ready = false;
 				orb_publish(ORB_ID(radio_send_ready), _radio_send_ready_pub, &_radio_send_ready);
-
 
 				// Prepare custom syslink_message
 				syslink_message_t msg2;

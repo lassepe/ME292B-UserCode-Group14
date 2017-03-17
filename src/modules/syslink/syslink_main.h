@@ -39,7 +39,9 @@
 #include <drivers/device/ringbuffer.h>
 
 #include <uORB/uORB.h>
-#include <uORB/topics/raw_radio.h>
+#include <uORB/topics/radio_received.h>
+#include <uORB/topics/radio_send.h>
+#include <uORB/topics/radio_send_ready.h>
 
 #include "syslink.h"
 #include "crtp.h"
@@ -74,12 +76,25 @@ public:
 	int nullrate;
 	int rxrate;
 	int txrate;
-	
-	// Debug variables for main loop
-	int raw_handled;
-	int commander_handled;
-	int mav_handled;
-	int other_handled;
+
+	// Debug
+	int bailed;
+	int write_buffer_count;
+	int queue_count;
+	int queue_check_count;
+	int handle_message_count;
+	int message_bridged;
+	char dummy_string[64];
+	syslink_message_t *debug_sys;
+	crtp_message_t *debug_crtp;
+	syslink_message_t *actual_sys;
+	crtp_message_t *actual_crtp;
+
+	// Radio communication
+	struct radio_received_s _radio_received;
+	orb_advert_t _radio_received_pub;
+	struct radio_send_ready_s _radio_send_ready;
+	orb_advert_t _radio_send_ready_pub;
 
 private:
 
@@ -88,11 +103,11 @@ private:
 
 	int open_serial(const char *dev);
 
-	// Variables raw_radio_pub and raw_radio need to be passed to these functions
+	// Variables radio_received_pub and radio_received need to be passed to these functions
 	// in order to publish only data sent over the radio due to the control flow
 	// in the main loop
-	void handle_message(syslink_message_t *msg, orb_advert_t raw_radio_pub, raw_radio_s raw_radio);
-	void handle_raw(syslink_message_t *sys, orb_advert_t raw_radio_pub, raw_radio_s raw_radio);
+	void handle_message(syslink_message_t *msg);
+	void handle_raw(syslink_message_t *sys);
 
 	// Handles other types of messages that we don't really care about, but
 	// will be maintained with the bare minimum implementation for supporting

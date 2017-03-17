@@ -124,7 +124,9 @@ set(msg_file_names
 	mount_status.msg
 	ranging_report.msg
 	ranging_request.msg
-	raw_radio.msg
+	radio_received.msg
+	radio_send.msg
+	radio_send_ready.msg
 	)
 
 # Get absolute paths

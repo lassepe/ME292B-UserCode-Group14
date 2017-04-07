@@ -607,6 +607,8 @@ Syslink::handle_raw(syslink_message_t *sys)
 		memcpy(_radio_received.data, c->data, sizeof(c->data));
 		orb_publish(ORB_ID(radio_received), _radio_received_pub, &_radio_received);
 
+#if 0
+		mwm: this causes some sort of memory corruption. Probably a memory leak, if we are calling malloc on every msg.
 		// Debug
 		debug_sys = (syslink_message_t *) malloc(sizeof(syslink_message_t));
 		debug_crtp = (crtp_message_t *) malloc(sizeof(crtp_message_t));
@@ -615,6 +617,7 @@ Syslink::handle_raw(syslink_message_t *sys)
 
 		memcpy(debug_sys, sys, sizeof(syslink_message_t));
 		memcpy(debug_crtp, c, sizeof(crtp_message_t));
+#endif
 
 	} else {
 		;

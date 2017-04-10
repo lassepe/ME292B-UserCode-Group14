@@ -71,24 +71,10 @@ public:
 	int set_channel(uint8_t channel);
 	int set_address(uint64_t addr);
 
-
 	int pktrate;
 	int nullrate;
 	int rxrate;
 	int txrate;
-
-	// Debug
-	int bailed;
-	int write_buffer_count;
-	int queue_count;
-	int queue_check_count;
-	int handle_message_count;
-	int message_bridged;
-	char dummy_string[64];
-	syslink_message_t *debug_sys;
-	crtp_message_t *debug_crtp;
-	syslink_message_t *actual_sys;
-	crtp_message_t *actual_crtp;
 
 	// Radio communication
 	struct radio_received_s _radio_received;

@@ -125,3 +125,11 @@ PARAM_DEFINE_FLOAT(CALIBACC_BY, 0.0f);
  */
 PARAM_DEFINE_FLOAT(CALIBACC_BZ, 0.0f);
 
+
+/**
+ * Motor type
+ *
+ * Correct meas errors.
+ *
+ */
+PARAM_DEFINE_INT32(MOTOR_TYPE, 0);

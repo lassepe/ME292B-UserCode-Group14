@@ -66,10 +66,12 @@ public:
 
 	int start();
 
-	// TODO: These should wait for an ACK
 	int set_datarate(uint8_t datarate);
 	int set_channel(uint8_t channel);
 	int set_address(uint64_t addr);
+
+	int is_good(int i) { return _params_ack[i] != 0; }
+	void print_status();
 
 	int pktrate;
 	int nullrate;
@@ -82,7 +84,7 @@ public:
 	struct radio_send_ready_s _radio_send_ready;
 	orb_advert_t _radio_send_ready_pub;
 
-private:
+//private:
 
 	friend class SyslinkBridge;
 	friend class SyslinkMemory;
@@ -94,6 +96,7 @@ private:
 	// in the main loop
 	void handle_message(syslink_message_t *msg);
 	void handle_raw(syslink_message_t *sys);
+	void handle_radio(syslink_message_t *sys);
 
 	// Handles other types of messages that we don't really care about, but
 	// will be maintained with the bare minimum implementation for supporting
@@ -107,6 +110,7 @@ private:
 
 	int send_queued_raw_message();
 
+	void update_params(bool force_set);
 
 	int _syslink_task;
 	bool _task_running;
@@ -128,6 +132,14 @@ private:
 	ringbuffer::RingBuffer _writebuffer;
 	SyslinkBridge *_bridge;
 	SyslinkMemory *_memory;
+
+	int _params_sub;
+
+	// Current parameter values
+	uint32_t _channel, _rate;
+	uint64_t _addr;
+	hrt_abstime _params_update[3]; // Time at which the parameters were updated
+	hrt_abstime _params_ack[3]; // Time at which the parameters were acknowledged by the nrf module
 
 	orb_advert_t _battery_pub;
 	orb_advert_t _rc_pub;

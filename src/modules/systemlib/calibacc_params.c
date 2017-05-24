@@ -136,8 +136,16 @@ PARAM_DEFINE_INT32(MOTOR_TYPE, 0);
 
 
 /**
- * Motor type
+ * Quadcopter type
  *
  *
  */
 PARAM_DEFINE_INT32(QUADCOPTER_TYPE, 0);
+
+
+/**
+ * Vehicle ID (unique identifier)
+ *
+ *
+ */
+PARAM_DEFINE_INT32(VEHICLE_ID, 0);

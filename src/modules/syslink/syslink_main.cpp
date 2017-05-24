@@ -106,8 +106,8 @@ Syslink::Syslink() :
 	_rssi(RC_INPUT_RSSI_MAX),
 	_bstate(BAT_DISCHARGING)
 {
-	px4_sem_init(&radio_sem, 0, 0);
 	px4_sem_init(&memory_sem, 0, 0);
+	/* memory_sem use case is a signal */
 }
 
 
@@ -135,20 +135,7 @@ Syslink::set_datarate(uint8_t datarate)
 	msg.type = SYSLINK_RADIO_DATARATE;
 	msg.length = 1;
 	msg.data[0] = datarate;
-
-	if (send_message(&msg) != 0) {
-		return -1;
-	}
-
-	// Wait for a second
-//	struct timespec abstime = {1, 0};
-//	if(px4_sem_timedwait(&radio_sem, &abstime) != 0) {
-//		return -1;
-//	}
-
-
-
-	return OK;
+	return send_message(&msg);
 }
 
 int
@@ -191,6 +178,60 @@ Syslink::send_queued_raw_message()
 }
 
 
+void
+Syslink::update_params(bool force_set)
+{
+	param_t _param_radio_channel = param_find("SLNK_RADIO_CHAN");
+	param_t _param_radio_rate = param_find("SLNK_RADIO_RATE");
+	param_t _param_vehicle_id = param_find("VEHICLE_ID");
+
+	uint32_t channel, rate;
+	int vehId;
+
+	param_get(_param_radio_channel, &channel);
+	param_get(_param_radio_rate, &rate);
+	param_get(_param_vehicle_id, &vehId);
+
+	uint64_t addr = 0;
+	if(vehId >= 1 && vehId < 255){
+	  //zero is illegal ID
+	  uint8_t* indx = (uint8_t*) &addr;
+	  indx[4] = vehId;
+	  indx[3] = 0xE7;
+//	  addr = 0x0800000000;
+	}
+	else{
+	  return;
+	}
+
+
+	hrt_abstime t = hrt_absolute_time();
+
+	// request updates if needed
+
+	if (channel != this->_channel || force_set) {
+		this->_channel = channel;
+		set_channel(channel);
+		this->_params_update[0] = t;
+		this->_params_ack[0] = 0;
+	}
+
+	if (rate != this->_rate || force_set) {
+		this->_rate = rate;
+		set_datarate(rate);
+		this->_params_update[1] = t;
+		this->_params_ack[1] = 0;
+	}
+
+	if (addr != this->_addr || force_set) {
+		this->_addr = addr;
+		set_address(addr);
+		this->_params_update[2] = t;
+		this->_params_ack[2] = 0;
+	}
+
+
+}
 
 // 1M 8N1 serial connection to NRF51
 int
@@ -250,21 +291,6 @@ Syslink::task_main_trampoline(int argc, char *argv[])
 void
 Syslink::task_main()
 {
-	param_t _param_radio_channel = param_find("SLNK_RADIO_CHAN");
-	param_t _param_radio_rate = param_find("SLNK_RADIO_RATE");
-	param_t _param_radio_addr1 = param_find("SLNK_RADIO_ADDR1");
-	param_t _param_radio_addr2 = param_find("SLNK_RADIO_ADDR2");
-
-	uint32_t channel, rate, addr1, addr2;
-	uint64_t addr = 0;
-
-	param_get(_param_radio_channel, &channel);
-	param_get(_param_radio_rate, &rate);
-	param_get(_param_radio_addr1, &addr1);
-	param_get(_param_radio_addr2, &addr2);
-
-	memcpy(&addr, &addr2, 4); memcpy(((char *)&addr) + 4, &addr1, 4);
-
 	_bridge = new SyslinkBridge(this);
 	_bridge->init();
 
@@ -294,10 +320,6 @@ Syslink::task_main()
 
 	px4_arch_configgpio(GPIO_NRF_TXEN);
 
-	set_channel(channel);
-	set_datarate(rate);
-	set_address(addr);
-
 	/* _fd used for receiving incoming messages
 	   _rs (radio send) used for receiving messages to be sent to PC over radio */
 	int _rs = orb_subscribe(ORB_ID(radio_send));
@@ -319,6 +341,9 @@ Syslink::task_main()
 	syslink_message_t msg;
 
 	syslink_parse_init(&state);
+
+	// setup initial parameters
+	update_params(true);
 
 	// Advertise radio_received_data topic
 	memset(&_radio_received, 0, sizeof(_radio_received));
@@ -476,8 +501,7 @@ Syslink::handle_message(syslink_message_t *msg)
 		_lastrxtime = t;
 
 	} else if ((msg->type & SYSLINK_GROUP) == SYSLINK_RADIO) {
-		radio_msg = *msg;
-		px4_sem_post(&radio_sem);
+		handle_radio(msg);
 
 	} else if ((msg->type & SYSLINK_GROUP) == SYSLINK_OW) {
 		memcpy(&_memory->msgbuf, msg, sizeof(syslink_message_t));
@@ -524,6 +548,36 @@ Syslink::handle_message(syslink_message_t *msg)
 
 	} else {
 		led_off(LED_TX);
+	}
+
+
+	// resend parameters if they haven't been acknowledged
+	if (_params_ack[0] == 0 && t - _params_update[0] > 10000) {
+		set_channel(_channel);
+
+	} else if (_params_ack[1] == 0 && t - _params_update[1] > 10000) {
+		set_datarate(_rate);
+
+	} else if (_params_ack[2] == 0 && t - _params_update[2] > 10000) {
+		set_address(_addr);
+	}
+
+}
+
+void
+Syslink::handle_radio(syslink_message_t *sys)
+{
+	hrt_abstime t = hrt_absolute_time();
+
+	// record acknowlegements to parameter messages
+	if (sys->type == SYSLINK_RADIO_CHANNEL) {
+		_params_ack[0] = t;
+
+	} else if (sys->type == SYSLINK_RADIO_DATARATE) {
+		_params_ack[1] = t;
+
+	} else if (sys->type == SYSLINK_RADIO_ADDRESS) {
+		_params_ack[2] = t;
 	}
 
 }
@@ -573,9 +627,8 @@ Syslink::handle_raw(syslink_message_t *sys)
 		}
 
 	} else if (c->port == CRTP_PORT_MAVLINK) {
-
 		_count_in++;
-		// Pipe to Mavlink bridge
+		/* Pipe to Mavlink bridge */
 		_bridge->pipe_message(c);
 
 		// Publish to radio_received uORB topic
@@ -583,8 +636,7 @@ Syslink::handle_raw(syslink_message_t *sys)
 		orb_publish(ORB_ID(radio_received), _radio_received_pub, &_radio_received);
 
 	} else {
-		;
-		// handle_raw_other(sys);
+		handle_raw_other(sys);
 	}
 
 	// Allow one raw message to be sent from the queue
@@ -661,7 +713,7 @@ Syslink::handle_raw_other(syslink_message_t *sys)
 		else if (c->channel == 1) { // Param read
 			// 0 is ok
 			c->data[1] = 0; // value
-			c->size = 1 + 3;
+			c->size = 1 + 2;
 			send_message(sys);
 		}
 
@@ -698,6 +750,27 @@ Syslink::send_message(syslink_message_t *msg)
 	return 0;
 }
 
+void
+Syslink::print_status()
+{
+  printf("Param updates: %d; %d; %d\n", int(_params_update[0]),
+         int(_params_update[1]), int(_params_update[2]));
+  printf("Param acks: %d; %d; %d\n", int(_params_ack[0]),
+         int(_params_ack[1]), int(_params_ack[2]));
+
+  printf("Param set acks still waiting:");
+  if(0 == _params_ack[0]){
+    printf("SYSLINK_RADIO_CHANNEL ");
+  }
+  if(0 == _params_ack[1]){
+    printf("SYSLINK_RADIO_DATARATE ");
+  }
+  if(0 == _params_ack[2]){
+    printf("SYSLINK_RADIO_ADDRESS ");
+  }
+  printf("\n");
+}
+
 
 namespace syslink
 {
@@ -717,7 +790,7 @@ void start()
 {
 	if (g_syslink != nullptr) {
 		printf("Already started\n");
-		exit(1);
+		return;
 	}
 
 	g_syslink = new Syslink();
@@ -728,7 +801,7 @@ void start()
 
 
 	warnx("Started syslink on /dev/ttyS2\n");
-	exit(0);
+	return;
 
 }
 
@@ -736,14 +809,31 @@ void status()
 {
 	if (g_syslink == nullptr) {
 		printf("Please start syslink first\n");
-		exit(1);
+		return;
 	}
 
 	printf("Connection activity:\n");
 	printf("- total rx: %d p/s\n", g_syslink->pktrate);
 	printf("- radio rx: %d p/s (%d null)\n", g_syslink->rxrate, g_syslink->nullrate);
 	printf("- radio tx: %d p/s\n\n", g_syslink->txrate);
+	printf("Radio address, byte-wise: ");
+	uint8_t *tmp = (uint8_t*) (&g_syslink->_addr);
+	for(int i=7; i>=0; i--){
+    printf("%0X,", int(tmp[i]));
+	}
+	printf("\n\n");
 
+	printf("Parameter Status:\n");
+	const char *goodParam = "good";
+	const char *badParam = "fail!";
+	printf("- channel: %s\n", g_syslink->is_good(0) ? goodParam : badParam);
+	printf("- data rate: %s\n", g_syslink->is_good(1) != 0 ? goodParam : badParam);
+	printf("- address: %s\n\n", g_syslink->is_good(2) != 0 ? goodParam : badParam);
+
+	g_syslink->print_status();
+
+	/*
+	 *mwm: this freezes...
 	int deckfd = open(DECK_DEVICE_PATH, O_RDONLY);
 	int ndecks = 0; ioctl(deckfd, DECKIOGNUM, (unsigned long) &ndecks);
 	printf("Deck scan: (found %d)\n", ndecks);
@@ -781,7 +871,8 @@ void status()
 	}
 
 	close(deckfd);
-	exit(0);
+	*/
+	return;
 }
 
 void attached(int pid)
@@ -804,7 +895,7 @@ void attached(int pid)
 	}
 
 	close(deckfd);
-	exit(found ? 1 : 0);
+	return;
 }
 
 
@@ -813,6 +904,7 @@ void test()
 {
 	// TODO: Ensure battery messages are recent
 	// TODO: Read and write from memory to ensure it is working
+  printf("Test fn not implemented.\n");
 	return;
 }
 
@@ -826,7 +918,7 @@ int syslink_main(int argc, char *argv[])
 {
 	if (argc < 2) {
 		syslink::usage();
-		exit(1);
+		return 1;
 	}
 
 
@@ -834,10 +926,12 @@ int syslink_main(int argc, char *argv[])
 
 	if (!strcmp(verb, "start")) {
 		syslink::start();
+		return 0;
 	}
 
 	if (!strcmp(verb, "status")) {
 		syslink::status();
+		return 0;
 	}
 
 	if (!strcmp(verb, "attached")) {
@@ -847,17 +941,18 @@ int syslink_main(int argc, char *argv[])
 
 		int pid = atoi(argv[2]);
 		syslink::attached(pid);
+		return 0;
 	}
 
 	if (!strcmp(verb, "test")) {
 		syslink::test();
+		return 0;
 	}
 
 
 
 
 	syslink::usage();
-	exit(1);
 
 	return 0;
 }

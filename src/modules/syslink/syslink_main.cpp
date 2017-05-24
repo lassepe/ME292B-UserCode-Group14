@@ -83,10 +83,6 @@ const unsigned SEND_FREQUENCY = 1000;  //Hz
 
 Syslink *g_syslink = nullptr;
 
-uint64_t nrfAddressSet = 0;
-int64_t mwmDebug[10];
-
-
 Syslink::Syslink() :
 	pktrate(0),
 	nullrate(0),
@@ -187,21 +183,26 @@ Syslink::update_params(bool force_set)
 {
 	param_t _param_radio_channel = param_find("SLNK_RADIO_CHAN");
 	param_t _param_radio_rate = param_find("SLNK_RADIO_RATE");
-	param_t _param_radio_addr1 = param_find("SLNK_RADIO_ADDR1");
-	param_t _param_radio_addr2 = param_find("SLNK_RADIO_ADDR2");
+	param_t _param_vehicle_id = param_find("VEHICLE_ID");
 
-
-	// reading parameter values into temp variables
-
-	uint32_t channel, rate, addr1, addr2;
-	uint64_t addr = 0;
+	uint32_t channel, rate;
+	int vehId;
 
 	param_get(_param_radio_channel, &channel);
 	param_get(_param_radio_rate, &rate);
-	param_get(_param_radio_addr1, &addr1);
-	param_get(_param_radio_addr2, &addr2);
+	param_get(_param_vehicle_id, &vehId);
 
-	memcpy(&addr, &addr2, 4); memcpy(((char *)&addr) + 4, &addr1, 4);
+	uint64_t addr = 0;
+	if(vehId >= 1 && vehId < 255){
+	  //zero is illegal ID
+	  uint8_t* indx = (uint8_t*) &addr;
+	  indx[4] = vehId;
+	  indx[3] = 0xE7;
+//	  addr = 0x0800000000;
+	}
+	else{
+	  return;
+	}
 
 
 	hrt_abstime t = hrt_absolute_time();
@@ -816,9 +817,9 @@ void status()
 	printf("- radio rx: %d p/s (%d null)\n", g_syslink->rxrate, g_syslink->nullrate);
 	printf("- radio tx: %d p/s\n\n", g_syslink->txrate);
 	printf("Radio address, byte-wise: ");
-	uint8_t *tmp = (uint8_t*) (&nrfAddressSet);
+	uint8_t *tmp = (uint8_t*) (&g_syslink->_addr);
 	for(int i=7; i>=0; i--){
-    printf("%0x,", int(tmp[i]));
+    printf("%0X,", int(tmp[i]));
 	}
 	printf("\n\n");
 
@@ -828,11 +829,6 @@ void status()
 	printf("- channel: %s\n", g_syslink->is_good(0) ? goodParam : badParam);
 	printf("- data rate: %s\n", g_syslink->is_good(1) != 0 ? goodParam : badParam);
 	printf("- address: %s\n\n", g_syslink->is_good(2) != 0 ? goodParam : badParam);
-
-	printf("---DEBUG---\n");
-	for(int i=0; i<10; i++){
-	  printf("\t%d -> %d\n", i, mwmDebug[i]);
-	}
 
 	g_syslink->print_status();
 

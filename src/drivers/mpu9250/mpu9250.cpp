@@ -1384,13 +1384,18 @@ MPU9250::measure()
 	// apply user specified rotation
 	rotate_3f(_rotation, xraw_f, yraw_f, zraw_f);
 
-	float x_in_new = ((xraw_f * _accel_range_scale) - _accel_scale.x_offset) * _accel_scale.x_scale;
-	float y_in_new = ((yraw_f * _accel_range_scale) - _accel_scale.y_offset) * _accel_scale.y_scale;
-	float z_in_new = ((zraw_f * _accel_range_scale) - _accel_scale.z_offset) * _accel_scale.z_scale;
+	// saman: no low pass filter here.
+//	float x_in_new = ((xraw_f * _accel_range_scale) - _accel_scale.x_offset) * _accel_scale.x_scale;
+//  float y_in_new = ((yraw_f * _accel_range_scale) - _accel_scale.y_offset) * _accel_scale.y_scale;
+//  float z_in_new = ((zraw_f * _accel_range_scale) - _accel_scale.z_offset) * _accel_scale.z_scale;
 
-	arb.x = _accel_filter_x.apply(x_in_new);
-	arb.y = _accel_filter_y.apply(y_in_new);
-	arb.z = _accel_filter_z.apply(z_in_new);
+	arb.x = ((xraw_f * _accel_range_scale) - _accel_scale.x_offset) * _accel_scale.x_scale;
+	arb.y = ((yraw_f * _accel_range_scale) - _accel_scale.y_offset) * _accel_scale.y_scale;
+	arb.z = ((zraw_f * _accel_range_scale) - _accel_scale.z_offset) * _accel_scale.z_scale;
+
+//	arb.x = _accel_filter_x.apply(x_in_new);
+//	arb.y = _accel_filter_y.apply(y_in_new);
+//	arb.z = _accel_filter_z.apply(z_in_new);
 
 	// saman: comment out these parts (unnecessary). To reduce CPU usage.
 //	math::Vector<3> aval(x_in_new, y_in_new, z_in_new);
@@ -1420,13 +1425,17 @@ MPU9250::measure()
 	// apply user specified rotation
 	rotate_3f(_rotation, xraw_f, yraw_f, zraw_f);
 
-	float x_gyro_in_new = ((xraw_f * _gyro_range_scale) - _gyro_scale.x_offset) * _gyro_scale.x_scale;
-	float y_gyro_in_new = ((yraw_f * _gyro_range_scale) - _gyro_scale.y_offset) * _gyro_scale.y_scale;
-	float z_gyro_in_new = ((zraw_f * _gyro_range_scale) - _gyro_scale.z_offset) * _gyro_scale.z_scale;
+	// saman: no low pass filter here.
+//  float x_gyro_in_new = ((xraw_f * _gyro_range_scale) - _gyro_scale.x_offset) * _gyro_scale.x_scale;
+//  float y_gyro_in_new = ((yraw_f * _gyro_range_scale) - _gyro_scale.y_offset) * _gyro_scale.y_scale;
+//  float z_gyro_in_new = ((zraw_f * _gyro_range_scale) - _gyro_scale.z_offset) * _gyro_scale.z_scale;
+	grb.x = ((xraw_f * _gyro_range_scale) - _gyro_scale.x_offset) * _gyro_scale.x_scale;
+	grb.y = ((yraw_f * _gyro_range_scale) - _gyro_scale.y_offset) * _gyro_scale.y_scale;
+	grb.z = ((zraw_f * _gyro_range_scale) - _gyro_scale.z_offset) * _gyro_scale.z_scale;
 
-	grb.x = _gyro_filter_x.apply(x_gyro_in_new);
-	grb.y = _gyro_filter_y.apply(y_gyro_in_new);
-	grb.z = _gyro_filter_z.apply(z_gyro_in_new);
+//	grb.x = _gyro_filter_x.apply(x_gyro_in_new);
+//	grb.y = _gyro_filter_y.apply(y_gyro_in_new);
+//	grb.z = _gyro_filter_z.apply(z_gyro_in_new);
 
 	// saman: comment out these parts (unnecessary). To reduce CPU usage.
 //	math::Vector<3> gval(x_gyro_in_new, y_gyro_in_new, z_gyro_in_new);

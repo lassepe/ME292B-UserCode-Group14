@@ -71,7 +71,7 @@
 
 #include <drivers/device/spi.h>
 #include <drivers/device/ringbuffer.h>
-#include <drivers/device/integrator.h>
+//#include <drivers/device/integrator.h>
 #include <drivers/drv_accel.h>
 #include <drivers/drv_gyro.h>
 #include <drivers/drv_mag.h>
@@ -88,7 +88,7 @@
   accelerometer values. This time reduction is enough to cope with
   worst case timing jitter due to other timers
  */
-#define MPU9250_TIMER_REDUCTION				200
+#define MPU9250_TIMER_REDUCTION				800  //saman: This will set the sensor output rate approximately to 500 Hz.(was 200 before)
 
 
 /*
@@ -1125,17 +1125,7 @@ MPU9250::cycle_trampoline(void *arg)
 void
 MPU9250::cycle()
 {
-
-//	int ret = measure();
-
 	measure();
-
-//	if (ret != OK) {
-//		/* issue a reset command to the sensor */
-//		reset();
-//		start();
-//		return;
-//	}
 
 	if (_call_interval != 0) {
 		work_queue(HPWORK,
@@ -1383,9 +1373,9 @@ MPU9250::measure()
 
 	/* NOTE: Axes have been swapped to match the board a few lines above. */
 
-	arb.x_raw = report.accel_x;
-	arb.y_raw = report.accel_y;
-	arb.z_raw = report.accel_z;
+//	arb.x_raw = report.accel_x;
+//	arb.y_raw = report.accel_y;
+//	arb.z_raw = report.accel_z;
 
 	float xraw_f = report.accel_x;
 	float yraw_f = report.accel_y;
@@ -1402,25 +1392,26 @@ MPU9250::measure()
 	arb.y = _accel_filter_y.apply(y_in_new);
 	arb.z = _accel_filter_z.apply(z_in_new);
 
-	math::Vector<3> aval(x_in_new, y_in_new, z_in_new);
-	math::Vector<3> aval_integrated;
+	// saman: comment out these parts (unnecessary). To reduce CPU usage.
+//	math::Vector<3> aval(x_in_new, y_in_new, z_in_new);
+//	math::Vector<3> aval_integrated;
+//
+//	bool accel_notify = _accel_int.put(arb.timestamp, aval, aval_integrated, arb.integral_dt);
+//	arb.x_integral = aval_integrated(0);
+//	arb.y_integral = aval_integrated(1);
+//	arb.z_integral = aval_integrated(2);
 
-	bool accel_notify = _accel_int.put(arb.timestamp, aval, aval_integrated, arb.integral_dt);
-	arb.x_integral = aval_integrated(0);
-	arb.y_integral = aval_integrated(1);
-	arb.z_integral = aval_integrated(2);
-
-	arb.scaling = _accel_range_scale;
-	arb.range_m_s2 = _accel_range_m_s2;
+//	arb.scaling = _accel_range_scale;
+//	arb.range_m_s2 = _accel_range_m_s2;
 
 	_last_temperature = (report.temp) / 361.0f + 35.0f;
 
-	arb.temperature_raw = report.temp;
+//	arb.temperature_raw = report.temp;
 	arb.temperature = _last_temperature;
 
-	grb.x_raw = report.gyro_x;
-	grb.y_raw = report.gyro_y;
-	grb.z_raw = report.gyro_z;
+//	grb.x_raw = report.gyro_x;
+//	grb.y_raw = report.gyro_y;
+//	grb.z_raw = report.gyro_z;
 
 	xraw_f = report.gyro_x;
 	yraw_f = report.gyro_y;
@@ -1437,40 +1428,42 @@ MPU9250::measure()
 	grb.y = _gyro_filter_y.apply(y_gyro_in_new);
 	grb.z = _gyro_filter_z.apply(z_gyro_in_new);
 
-	math::Vector<3> gval(x_gyro_in_new, y_gyro_in_new, z_gyro_in_new);
-	math::Vector<3> gval_integrated;
+	// saman: comment out these parts (unnecessary). To reduce CPU usage.
+//	math::Vector<3> gval(x_gyro_in_new, y_gyro_in_new, z_gyro_in_new);
+//	math::Vector<3> gval_integrated;
+//
+//	bool gyro_notify = _gyro_int.put(arb.timestamp, gval, gval_integrated, grb.integral_dt);
+//	grb.x_integral = gval_integrated(0);
+//	grb.y_integral = gval_integrated(1);
+//	grb.z_integral = gval_integrated(2);
 
-	bool gyro_notify = _gyro_int.put(arb.timestamp, gval, gval_integrated, grb.integral_dt);
-	grb.x_integral = gval_integrated(0);
-	grb.y_integral = gval_integrated(1);
-	grb.z_integral = gval_integrated(2);
+//	grb.scaling = _gyro_range_scale;
+//	grb.range_rad_s = _gyro_range_rad_s;
 
-	grb.scaling = _gyro_range_scale;
-	grb.range_rad_s = _gyro_range_rad_s;
-
-	grb.temperature_raw = report.temp;
+//	grb.temperature_raw = report.temp;
 	grb.temperature = _last_temperature;
 
 	_accel_reports->force(&arb);
 	_gyro_reports->force(&grb);
 
-	/* notify anyone waiting for data */
-	if (accel_notify) {
-		poll_notify(POLLIN);
-	}
+	// saman: comment out these parts (unnecessary). To reduce CPU usage.
+//	/* notify anyone waiting for data */
+//	if (accel_notify) {
+//		poll_notify(POLLIN);
+//	}
+//
+//	if (gyro_notify) {
+//		_gyro->parent_poll_notify();
+//	}
 
-	if (gyro_notify) {
-		_gyro->parent_poll_notify();
-	}
-
-	if (accel_notify && !(_pub_blocked)) {
+	if (!(_pub_blocked)) {
 		/* log the time of this report */
 		perf_begin(_controller_latency_perf);
 		/* publish it */
 		orb_publish(ORB_ID(sensor_accel), _accel_topic, &arb);
 	}
 
-	if (gyro_notify && !(_pub_blocked)) {
+	if (!(_pub_blocked)) {
 		/* publish it */
 		orb_publish(ORB_ID(sensor_gyro), _gyro->_gyro_topic, &grb);
 	}

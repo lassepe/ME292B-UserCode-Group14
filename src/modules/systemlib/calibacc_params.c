@@ -125,6 +125,70 @@ PARAM_DEFINE_FLOAT(CALIBACC_BY, 0.0f);
  */
 PARAM_DEFINE_FLOAT(CALIBACC_BZ, 0.0f);
 
+/**
+ * Propeller coefficient correction , prop 0
+ * (after mixer, CF2-definition)
+ *
+ * Correct unknown factor in conversion from
+ * commanded to real forces
+ *
+ * @group Propeller correction
+ * @unit
+ * @decimal 4
+ * @min 0.0
+ * @max 2.0
+ * @increment 0.001
+ */
+PARAM_DEFINE_FLOAT(PROPCORR_0, 1.0f);
+
+/**
+ * Propeller coefficient correction , prop 1
+ * (after mixer, CF2-definition)
+ *
+ * Correct unknown factor in conversion from
+ * commanded to real forces
+ *
+ * @group Propeller correction
+ * @unit
+ * @decimal 4
+ * @min 0.0
+ * @max 2.0
+ * @increment 0.001
+ */
+PARAM_DEFINE_FLOAT(PROPCORR_1, 1.0f);
+
+/**
+ * Propeller coefficient correction , prop 2
+ * (after mixer, CF2-definition)
+ *
+ * Correct unknown factor in conversion from
+ * commanded to real forces
+ *
+ * @group Propeller correction
+ * @unit
+ * @decimal 4
+ * @min 0.0
+ * @max 2.0
+ * @increment 0.001
+ */
+PARAM_DEFINE_FLOAT(PROPCORR_2, 1.0f);
+
+/**
+ * Propeller coefficient correction , prop 3
+ * (after mixer, CF2-definition)
+ *
+ * Correct unknown factor in conversion from
+ * commanded to real forces
+ *
+ * @group Propeller correction
+ * @unit
+ * @decimal 4
+ * @min 0.0
+ * @max 2.0
+ * @increment 0.001
+ */
+PARAM_DEFINE_FLOAT(PROPCORR_3, 1.0f);
+
 
 /**
  * Motor type

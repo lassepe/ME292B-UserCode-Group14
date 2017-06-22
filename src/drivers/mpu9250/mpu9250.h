@@ -31,6 +31,7 @@
  *
  ****************************************************************************/
 
+#define PX4_I2C_OBDEV_MPU9250 0x69
 #include <stdint.h>
 
 #include <systemlib/perf_counter.h>
@@ -180,7 +181,7 @@
 #define MPU_WHOAMI_9250			0x71
 
 #define MPU9250_ACCEL_DEFAULT_RATE	1000
-#define MPU9250_ACCEL_MAX_OUTPUT_RATE			280
+#define MPU9250_ACCEL_MAX_OUTPUT_RATE			1000
 #define MPU9250_ACCEL_DEFAULT_DRIVER_FILTER_FREQ 20
 #define MPU9250_GYRO_DEFAULT_RATE	1000
 /* rates need to be the same between accel and gyro */

@@ -132,12 +132,14 @@ __EXPORT uint8_t stm32_spi1status(FAR struct spi_dev_s *dev, enum spi_dev_e devi
 __EXPORT void stm32_spiinitialize(void)
 {
 	stm32_configgpio(GPIO_EXPANSION_LPSDECK_CS);
+	stm32_configgpio(GPIO_EXPANSION_FLOWDECK_CS);
 
 	/* De-activate all peripherals,
 	 * required for some peripheral
 	 * state machines
 	 */
 	stm32_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);
+	stm32_gpiowrite(GPIO_EXPANSION_FLOWDECK_CS, 1);
 }
 
 __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool selected)
@@ -146,8 +148,13 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 
 	switch (devid) {
 	case PX4_SPIDEV_EXPANSION_DW1000_DEVID:
-		/* Making sure the other peripherals are not selected */
 		px4_arch_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, !selected);
+//		px4_arch_gpiowrite(GPIO_EXPANSION_FLOWDECK_CS, 1);
+		break;
+
+	case PX4_SPIDEV_EXPANSION_FLOWDECK_DEVID:
+		px4_arch_gpiowrite(GPIO_EXPANSION_FLOWDECK_CS, !selected);
+		//px4_arch_gpiowrite(GPIO_EXPANSION_LPSDECK_CS, 1);
 		break;
 
 	default:
@@ -224,7 +231,7 @@ __EXPORT int nsh_archinitialize(void)
 	led_off(LED_RX);
 
 	/*
-	spi1 = up_spiinitialize(PX4_SPIDEV_EXPANSION_DW1000_PORT);
+	spi1 = up_spiinitialize(PX4_SPIDEV_EXPANSION_PORT);
 	if (!spi1) {
 		message("[boot] FAILED to initialize SPI port 1\r\n");
 		up_ledon(LED_RED);

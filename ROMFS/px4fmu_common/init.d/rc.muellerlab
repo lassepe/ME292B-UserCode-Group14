@@ -3,6 +3,7 @@
 # Startup script for muellerlab
 #
 
-ranging start # start the UWB app
-cf_motors start
+#ranging start # start the UWB app
+#cf_motors start
 quad start
+flow start

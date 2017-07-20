@@ -129,9 +129,13 @@ set(config_module_list
 
 	# Hardware test
 	#examples/hwtest
+	
+	# For M136:
+	modules/quad
+	modules/cf_motors
+	modules/OpticalFlow
+	ME136
 )
-
-include(../src/Apps/apps)
 
 set(config_extra_builtin_cmds
 	serdis

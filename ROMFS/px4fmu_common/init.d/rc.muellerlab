@@ -1,9 +1,8 @@
 #!nsh
 #
-# Startup script for muellerlab
+# Startup script for muellerlab ME136
 #
 
-#ranging start # start the UWB app
-#cf_motors start
-quad start
+cf_motors start
 flow start
+quad start

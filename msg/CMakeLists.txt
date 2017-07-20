@@ -128,6 +128,7 @@ set(msg_file_names
 	radio_send.msg
 	radio_send_ready.msg
 	optical_flow_report.msg
+	range_sensor_report.msg
 	)
 
 # Get absolute paths

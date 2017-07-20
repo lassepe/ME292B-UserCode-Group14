@@ -31,6 +31,7 @@ struct MainLoopInput {
     bool buttonBlue;
     bool buttonYellow;
     bool buttonStart;
+    bool buttonSelect;
     bool updated;
   } joystickInput;
 

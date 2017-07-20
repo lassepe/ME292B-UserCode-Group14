@@ -12,7 +12,7 @@ MainLoopInput lastMainLoopInputs;
 MainLoopOutput lastMainLoopOutputs;
 
 MainLoopOutput MainLoop(MainLoopInput const &in) {
-  lastMainLoopInputs = in;//we copy this, in case we want to print some info about the inputs
+  lastMainLoopInputs = in;  //we copy this, in case we want to print some info about the inputs
   //Your code goes here!
 
   //Define the output numbers:
@@ -53,8 +53,24 @@ void PrintStatus() {
 
   //just an example of how we would inspect the last main loop inputs and outputs:
   printf("Last main loop inputs:\n");
-  printf("  batt voltage = %6.3f\n", double(lastMainLoopInputs.batteryVoltage.value));
+  printf("  batt voltage = %6.3f\n",
+         double(lastMainLoopInputs.batteryVoltage.value));
+  printf("  JS buttons: ");
+  if (lastMainLoopInputs.joystickInput.buttonRed)
+    printf("buttonRed ");
+  if (lastMainLoopInputs.joystickInput.buttonGreen)
+    printf("buttonGreen ");
+  if (lastMainLoopInputs.joystickInput.buttonBlue)
+    printf("buttonBlue ");
+  if (lastMainLoopInputs.joystickInput.buttonYellow)
+    printf("buttonYellow ");
+  if (lastMainLoopInputs.joystickInput.buttonStart)
+    printf("buttonStart ");
+  if (lastMainLoopInputs.joystickInput.buttonSelect)
+    printf("buttonSelect ");
+  printf("\n");
   printf("Last main loop outputs:\n");
-  printf("  motor command 1 = %6.3f\n", double(lastMainLoopOutputs.motorCommand1));
+  printf("  motor command 1 = %6.3f\n",
+         double(lastMainLoopOutputs.motorCommand1));
   printf("==== End print status ====\n");
 }

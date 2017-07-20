@@ -34,6 +34,7 @@
 #include <uORB/topics/range_sensor_report.h>
 
 #include "TelemetryPacket.hpp"
+#include "RadioTypes.hpp"
 
 #include "Vec3f.hpp"
 #include "MainLoopTypes.hpp"
@@ -48,6 +49,8 @@ void OnTimer(void* p);
 int logicThread(int argc, char *argv[]);
 
 const unsigned ONBOARD_FREQUENCY = 500;  //Hz
+
+int teamID = 0;
 
 static bool verbose = false;
 
@@ -295,10 +298,22 @@ int logicThread(int argc, char *argv[]) {
       struct radio_received_s raw;
       memset(&raw, 0, sizeof(raw));
       orb_copy(ORB_ID(radio_received), orb_sub_radioReceived, &raw);
-      //TODO MWM: decode data, input here.
-//      mlInputs.joystickInput.axisLeftHorizontal =
+      RadioTypes::RadioMessageDecoded msg = RadioTypes::RadioMessageDecoded(
+          raw.data);
+
+      mlInputs.joystickInput.axisLeftHorizontal = msg.floats[0];
+      mlInputs.joystickInput.axisLeftVertical = msg.floats[1];
+      mlInputs.joystickInput.axisRightHorizontal = msg.floats[2];
+      mlInputs.joystickInput.axisRightVertical = msg.floats[3];
+
+      mlInputs.joystickInput.buttonRed = msg.buttonRed;
+      mlInputs.joystickInput.buttonGreen = msg.buttonGreen;
+      mlInputs.joystickInput.buttonBlue = msg.buttonBlue;
+      mlInputs.joystickInput.buttonYellow = msg.buttonYellow;
+      mlInputs.joystickInput.buttonStart = msg.buttonStart;
+      mlInputs.joystickInput.buttonSelect = msg.buttonSelect;
+
       mlInputs.joystickInput.updated = true;
-//      logic.SetRadioMessage(RadioTypes::RadioMessageDecoded(raw.data));
     } else {
       mlInputs.joystickInput.updated = false;
     }
@@ -398,6 +413,31 @@ int quad_main(int argc, char *argv[]) {
     return -1;
   }
 
+  if (!strcmp(argv[1], "setTeamId")) {
+    if (argc >= 3) {
+      int vehIdIn = atoi(argv[2]);
+      if ((vehIdIn >= 1) && (vehIdIn <= 255)) {
+        //valid argument
+        printf("setting vehicle ID to %d\n", vehIdIn);
+
+        if (param_set(param_find("VEHICLE_ID"), &vehIdIn)) {
+          printf("Failed to set parameter\n");
+        } else {
+          printf("Param set: to %d\n", vehIdIn);
+          printf("Now you *MUST* run `param save` to store the params\n");
+        }
+        return 0;
+      } else {
+        printf("Invalid type\n");
+      }
+    } else {
+      printf("Too few arguments\n");
+    }
+
+    printf("e.g. quad setTeamId 7\n");
+    return -1;
+  }
+
   if (!strcmp(argv[1], "start")) {
     if (thread_running) {
       printf("Thread already running\n");
@@ -411,20 +451,10 @@ int quad_main(int argc, char *argv[]) {
       }
     }
 
-    int quadType = 0;
-    if (0 != param_get(param_find("QUADCOPTER_TYPE"), &quadType)) {
-      printf("Failed to get param <QUADCOPTER_TYPE>\n");
-      quadType = 0;
-    }
-
-    int vehId = 0;
-    if (0 != param_get(param_find("VEHICLE_ID"), &vehId)) {
+    if (0 != param_get(param_find("VEHICLE_ID"), &teamID)) {
       printf("Failed to get param <VEHICLE_ID>\n");
-      vehId = 0;
+      teamID = 0;
     }
-
-//    logic.Initialise(Onboard::QuadcopterConstants::QuadcopterType(quadType),
-//                     vehId);
 
     daemon_task = px4_task_spawn_cmd("logic_quad", SCHED_DEFAULT,
     SCHED_PRIORITY_DEFAULT,
@@ -434,25 +464,6 @@ int quad_main(int argc, char *argv[]) {
     return 0;
   }
 
-  if (!strcmp(argv[1], "go")) {
-    if (!thread_running) {
-      printf("Thread not running\n");
-      return 0;
-    }
-
-    int takeoffDelay = 3;
-    if (argc > 2) {
-      takeoffDelay = atoi(argv[2]);
-    }
-    printf("Will take off in %d seconds:\n", takeoffDelay);
-    for (int i = 0; i < takeoffDelay; i++) {
-      printf("%d\n", int(takeoffDelay - i));
-      usleep(1000 * 1000);
-    }
-    printf("Decolage!\n");
-//    logic.SetGoAutonomous();
-    return 0;
-  }
   if (!strcmp(argv[1], "stop")) {
     if (!thread_running) {
       printf("thread not running\n");
@@ -467,33 +478,16 @@ int quad_main(int argc, char *argv[]) {
     return 0;
   }
 
-  if (!strcmp(argv[1], "test") || !strcmp(argv[1], "t")) {
-    if (argc < 3) {
-      usage();
-      return -1;
-    }
-
-    if (!strcmp(argv[2], "thrust") || !strcmp(argv[2], "t")) {
-      if (argc < 4) {
-        usage();
-        return -1;
-      }
-      printf("argc=%d\n", int(argc));
-      const unsigned TEST_TIME = 5;
-      float thrustFrac = atof(argv[3]);
-      printf("Running thrust test for %ds, @ %.3f*weight\n", TEST_TIME,
-             double(thrustFrac));
-      //TODO: test modes
-//      logic.TestMotors(true, thrustFrac);
-      usleep(1 * 1000 * 1000);
-//      logic.PrintStatus();
-      usleep((TEST_TIME - 1) * 1000 * 1000);
-//      logic.TestMotors(false, 0);
-    }
-  }
-
   if (!strcmp(argv[1], "status")) {
+    if (teamID == 0) {
+      printf("ERROR!\nERROR!\nERROR!\nERROR!\n");
+      printf("You have an invalid team id set. \n");
+      printf(
+          "Run the following, but replace `7` with your team's ID. Then turn the vehicle off and on.\n");
+      printf(" quad setTeamId 7\n\n");
+    }
     if (thread_running) {
+      printf("STATUS: \n Team ID = %d\n", teamID);
       PrintStatus();
     } else {
       printf("\tquad not running\n");
@@ -524,7 +518,8 @@ int quad_main(int argc, char *argv[]) {
         printf("  orb_sub_flowReport  = %d\n", orb_sub_flowReport);
       }
       if (!orb_sub_rangeSensorReport) {
-        printf("  orb_sub_rangeSensorReport  = %d\n", orb_sub_rangeSensorReport);
+        printf("  orb_sub_rangeSensorReport  = %d\n",
+               orb_sub_rangeSensorReport);
       }
       printf("End orb sub problems.\n");
       printf("-----\n");

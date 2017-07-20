@@ -49,10 +49,10 @@ struct MainLoopInput {
 };
 
 struct MainLoopOutput {
-  float motorCommand1;  //[rad/s]
-  float motorCommand2;  //[rad/s]
-  float motorCommand3;  //[rad/s]
-  float motorCommand4;  //[rad/s]
+  int motorCommand1;  // located at body +x +y
+  int motorCommand2;  // located at body +x -y
+  int motorCommand3;  // located at body -x -y
+  int motorCommand4;  // located at body -x +y
 
   bool led1;
   bool led2;

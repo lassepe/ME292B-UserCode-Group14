@@ -22,6 +22,15 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   outVals.motorCommand3 = 0;
   outVals.motorCommand4 = 0;
 
+//  int motorCommand1; // located at body +x +y
+//  int motorCommand2; // located at body +x -y
+//  int motorCommand3; // located at body -x -y
+//  int motorCommand4; // located at body -x +y
+  outVals.motorCommand1 = in.joystickInput.buttonBlue ? 50 : 0;
+  outVals.motorCommand2 = in.joystickInput.buttonBlue ? 50 : 0;
+  outVals.motorCommand3 = in.joystickInput.buttonBlue ? 50 : 0;
+  outVals.motorCommand4 = in.joystickInput.buttonBlue ? 50 : 0;
+
   outVals.led1 = 0;
   outVals.led2 = 0;
   outVals.led3 = 0;

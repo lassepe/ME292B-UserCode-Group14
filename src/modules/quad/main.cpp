@@ -54,29 +54,6 @@ int teamID = 0;
 
 static bool verbose = false;
 
-//static HardwareTimer hwtimer;
-class Timer {
- public:
-  Timer() {
-    Reset();
-  }
-
-  float GetElapsedSeconds() {
-    return float(hrt_absolute_time() - _t0) / 1e-6f;
-  }
-
-  uint64_t GetElapsedMicroSeconds() {
-    return hrt_absolute_time() - _t0;
-  }
-
-  void Reset() {
-    _t0 = hrt_absolute_time();
-  }
-
- private:
-  uint64_t _t0;
-};
-
 void OnTimer(void* p) {
   sem_t* _sem = (sem_t*) p;
   int svalue;
@@ -112,6 +89,9 @@ static unsigned count_radioReceived = 0;
 static unsigned count_radioSendReady = 0;
 static unsigned count_flowReport = 0;
 static unsigned count_rangeSensorReport = 0;
+
+static bool armed = false;
+static unsigned cyclesSinceRadioCommand = 0;
 
 int logicThread(int argc, char *argv[]) {
   if (!orb_pub_actuatorCmds) {
@@ -248,6 +228,10 @@ int logicThread(int argc, char *argv[]) {
   mlInputs.opticalFlowSensor.value_y = 0;
   mlInputs.opticalFlowSensor.updated = false;
 
+  //whether we allow the motors to turn
+  armed = false;
+  const unsigned TIMEOUT_ARMED_CYCLES = unsigned(0.2 * ONBOARD_FREQUENCY);  //in cycles
+
   bool updated;
   thread_running = true;
   while (thread_running) {
@@ -314,7 +298,15 @@ int logicThread(int argc, char *argv[]) {
       mlInputs.joystickInput.buttonSelect = msg.buttonSelect;
 
       mlInputs.joystickInput.updated = true;
+
+      cyclesSinceRadioCommand = 0;
+      if (msg.flags) {
+        armed = true;
+      } else {
+        armed = false;
+      }
     } else {
+      cyclesSinceRadioCommand++;
       mlInputs.joystickInput.updated = false;
     }
 
@@ -348,10 +340,23 @@ int logicThread(int argc, char *argv[]) {
 
     //collect outputs:
     actuatorCmds.nvalues = 4;
-    actuatorCmds.values[0] = out.motorCommand1;
-    actuatorCmds.values[1] = out.motorCommand2;
-    actuatorCmds.values[2] = out.motorCommand3;
-    actuatorCmds.values[3] = out.motorCommand4;
+    //Note, we reshuffle the indices
+    if (cyclesSinceRadioCommand > TIMEOUT_ARMED_CYCLES) {
+      //timeout!
+      armed = false;
+    }
+    if (armed) {
+      actuatorCmds.values[0] = out.motorCommand2;  //+x, -y
+      actuatorCmds.values[1] = out.motorCommand4;  //-x, +y
+      actuatorCmds.values[2] = out.motorCommand1;  //+x, +y
+      actuatorCmds.values[3] = out.motorCommand3;  //-x, -y
+    } else {
+      //ignore commands!
+      actuatorCmds.values[0] = 0;
+      actuatorCmds.values[1] = 0;
+      actuatorCmds.values[2] = 0;
+      actuatorCmds.values[3] = 0;
+    }
 
     // TODO: Telemetry
 
@@ -488,6 +493,12 @@ int quad_main(int argc, char *argv[]) {
     }
     if (thread_running) {
       printf("STATUS: \n Team ID = %d\n", teamID);
+      if (armed) {
+        printf("vehicle is ARMED\n");
+      } else {
+        printf("vehicle is not armed\n");
+      }
+      printf("Cycles since last cmd = %ds\n", cyclesSinceRadioCommand);
       PrintStatus();
     } else {
       printf("\tquad not running\n");

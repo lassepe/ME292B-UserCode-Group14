@@ -189,9 +189,6 @@ int logicThread(int argc, char *argv[]) {
   sensor_gyro_s gyro;
   radio_send_ready_s rsReady;
 
-// Telemetry
-  TelemetryPacket::data_packet_t dataPacket1, dataPacket2;
-
   /* Check syslink_ready here since syslink publishes ready status on startup,
    but checking if the topic has been updated below will yield false */
   if (!syslink_ready) {
@@ -383,6 +380,39 @@ int logicThread(int argc, char *argv[]) {
        the uwb radio ATTEMPTS to send the whole group one after the other.
        Note: this does not ensure receival of the entire group, as individual packets can still
        get dropped. */
+
+      static uint8_t telPacketCounter = 0;
+      telPacketCounter = (telPacketCounter + 1) % 256;
+
+      TelemetryPacket::data_packet_t dataPacket1, dataPacket2;
+
+      TelemetryPacket::TelemetryPacket pkt;
+      pkt.packetNumber = telPacketCounter;
+      pkt.accel[0] = mlInputs.imuMeasurement.accelerometer.x;
+      pkt.accel[1] = mlInputs.imuMeasurement.accelerometer.y;
+      pkt.accel[2] = mlInputs.imuMeasurement.accelerometer.z;
+      pkt.gyro[0] = mlInputs.imuMeasurement.rateGyro.x;
+      pkt.gyro[1] = mlInputs.imuMeasurement.rateGyro.y;
+      pkt.gyro[2] = mlInputs.imuMeasurement.rateGyro.z;
+      pkt.battVoltage = mlInputs.batteryVoltage.value;
+      for (int i = 0; i < TelemetryPacket::TelemetryPacket::NUM_DEBUG_FLOATS;
+          i++) {
+        pkt.debugVals[i] = out.telemetryOutputs_plusMinus100[i];
+      }
+      pkt.debugchar = out.telemetryOutputDebugChar;
+      pkt.heightsensor = mlInputs.heightSensor.value;
+      pkt.motorCmds[0] = out.motorCommand1;
+      pkt.motorCmds[1] = out.motorCommand2;
+      pkt.motorCmds[2] = out.motorCommand3;
+      pkt.motorCmds[3] = out.motorCommand4;
+      pkt.opticalFlowx = float(mlInputs.opticalFlowSensor.value_x);
+      pkt.opticalFlowy = float(mlInputs.opticalFlowSensor.value_y);
+
+      pkt.type = TelemetryPacket::PACKET_TYPE_QUAD_TELEMETRY_PT1;
+      EncodeTelemetryPacket(pkt, dataPacket1);
+      pkt.type = TelemetryPacket::PACKET_TYPE_QUAD_TELEMETRY_PT2;
+      EncodeTelemetryPacket(pkt, dataPacket2);
+
       radio_send.numPackets = 2;
       memset(radio_send.data1, 0, sizeof(radio_send.data1));
       memcpy(radio_send.data1, &dataPacket1,

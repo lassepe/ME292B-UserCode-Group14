@@ -58,4 +58,8 @@ struct MainLoopOutput {
   bool led2;
   bool led3;
   bool led4;
+
+  //variables that are only used for telemetry:
+  float telemetryOutputs_plusMinus100[12];  // NOTE! These are bounded to be in +/- 100
+  uint8_t telemetryOutputDebugChar;
 };

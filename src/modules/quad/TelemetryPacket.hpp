@@ -92,7 +92,7 @@ struct TelemetryPacket {
   float accel[3];
   float gyro[3];
   float motorCmds[4];
-  float opticalFlowx, opticalFlowy;
+  int opticalFlowx, opticalFlowy;
   float heightsensor;
   float battVoltage;
   /* seqNum = 1 -> packet includes position, attitude, velocity, panicReason */
@@ -118,12 +118,8 @@ void EncodeTelemetryPacket(TelemetryPacket const &src, data_packet_t &out) {
           MapToOnesRange(src.motorCmds[i], TEL_RANGE_GENERIC_MIN,
                          TEL_RANGE_GENERIC_MAX));
     }
-    out.data[10] = EncodeOnesRange(
-        MapToOnesRange(src.opticalFlowx, TEL_RANGE_GENERIC_MIN,
-                       TEL_RANGE_GENERIC_MAX));
-    out.data[11] = EncodeOnesRange(
-        MapToOnesRange(src.opticalFlowy, TEL_RANGE_GENERIC_MIN,
-                       TEL_RANGE_GENERIC_MAX));
+    out.data[10] = uint16_t(src.opticalFlowx + (1 << 15));
+    out.data[11] = uint16_t(src.opticalFlowy + (1 << 15));
     out.data[12] = EncodeOnesRange(
         MapToOnesRange(src.heightsensor, TEL_RANGE_GENERIC_MIN,
                        TEL_RANGE_GENERIC_MAX));
@@ -159,10 +155,8 @@ void DecodeTelemetryPacket(data_packet_t const &in, TelemetryPacket &out) {
       out.motorCmds[i] = MapToAB(DecodeOnesRange(in.data[i + 6]),
                                  TEL_RANGE_GENERIC_MIN, TEL_RANGE_GENERIC_MAX);
     }
-    out.opticalFlowx = MapToAB(DecodeOnesRange(in.data[10]),
-                               TEL_RANGE_GENERIC_MIN, TEL_RANGE_GENERIC_MAX);
-    out.opticalFlowy = MapToAB(DecodeOnesRange(in.data[11]),
-                               TEL_RANGE_GENERIC_MIN, TEL_RANGE_GENERIC_MAX);
+    out.opticalFlowx = int(in.data[10]) - (1 << 15);
+    out.opticalFlowy = int(in.data[11]) - (1 << 15);
     out.heightsensor = MapToAB(DecodeOnesRange(in.data[12]),
                                TEL_RANGE_GENERIC_MIN, TEL_RANGE_GENERIC_MAX);
     out.battVoltage = MapToAB(DecodeOnesRange(in.data[13]),

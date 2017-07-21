@@ -7,12 +7,11 @@ float exampleVariable_float = 0.0f;  //Note the trailing 'f' in the number. This
 Vec3f exampleVariable_Vec3f = Vec3f(0, 0, 0);
 int exampleVariable_int = 0;
 
-//We keep these around for later debugging:
+//We keep the last inputs and outputs around for debugging:
 MainLoopInput lastMainLoopInputs;
 MainLoopOutput lastMainLoopOutputs;
 
 MainLoopOutput MainLoop(MainLoopInput const &in) {
-  lastMainLoopInputs = in;  //we copy this, in case we want to print some info about the inputs
   //Your code goes here!
 
   //Define the output numbers:
@@ -36,7 +35,8 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   outVals.led3 = 0;
   outVals.led4 = 0;
 
-  //copy the outputs:
+  //copy the inputs and outputs:
+  lastMainLoopInputs = in;
   lastMainLoopOutputs = outVals;
   return outVals;
 }
@@ -81,5 +81,7 @@ void PrintStatus() {
   printf("Last main loop outputs:\n");
   printf("  motor command 1 = %6.3f\n",
          double(lastMainLoopOutputs.motorCommand1));
+  printf("Optical flow = %d, %d\n", lastMainLoopInputs.opticalFlowSensor.value_x, lastMainLoopInputs.opticalFlowSensor.value_y);
+  printf("height = %6.3f\n", double(lastMainLoopInputs.heightSensor.value));
   printf("==== End print status ====\n");
 }

@@ -5,6 +5,7 @@ px4_add_module(
 	STACK_MAIN 1500
 	SRCS
 		UserCode.cpp
+		UtilityFunctions.cpp
 	DEPENDS
 		platforms__common
 	)

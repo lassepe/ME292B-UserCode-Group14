@@ -36,8 +36,8 @@ struct MainLoopInput {
   } joystickInput;
 
   struct {
-    int32_t value_x;
-    int32_t value_y;
+    float value_x; //[rad/s]
+    float value_y; //[rad/s]
     bool updated;
   } opticalFlowSensor;
 
@@ -54,12 +54,6 @@ struct MainLoopOutput {
   int motorCommand3;  // located at body -x -y
   int motorCommand4;  // located at body -x +y
 
-  bool led1;
-  bool led2;
-  bool led3;
-  bool led4;
-
   //variables that are only used for telemetry:
   float telemetryOutputs_plusMinus100[12];  // NOTE! These are bounded to be in +/- 100
-  uint8_t telemetryOutputDebugChar;
 };

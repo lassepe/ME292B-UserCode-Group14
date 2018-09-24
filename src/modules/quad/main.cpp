@@ -22,6 +22,10 @@
 
 #include <drivers/drv_hrt.h>
 
+#include "board_config.h"
+#include <arch/board/board.h>
+#include <drivers/drv_led.h>
+
 #include <uORB/uORB.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/sensor_accel.h>
@@ -39,6 +43,9 @@
 #include "Vec3f.hpp"
 #include "MainLoopTypes.hpp"
 #include "UserCode.hpp"
+#include "LowPassFilterSecondOrder.hpp"
+
+#include "../../ME136/TeamID.hpp"
 
 static volatile bool thread_running = false; /**< Daemon status flag */
 static int daemon_task; /**< Handle of daemon task / thread */
@@ -48,9 +55,21 @@ extern "C" __EXPORT int quad_main(int argc, char *argv[]);
 void OnTimer(void* p);
 int logicThread(int argc, char *argv[]);
 
-const unsigned ONBOARD_FREQUENCY = 500;  //Hz
+__BEGIN_DECLS
+extern void led_on(int led);
+extern void led_off(int led);
+__END_DECLS
 
-int teamID = 0;
+const unsigned ONBOARD_FREQUENCY = 500;  //Hz
+bool haveHadLowBattery = false;
+
+enum ArmedStatus {
+  AS_notArmed_noMsgs,
+  AS_notArmed,
+  AS_armed,
+};
+
+int const teamID = ME136_TEAM_ID;
 
 static bool verbose = false;
 
@@ -90,8 +109,10 @@ static unsigned count_radioSendReady = 0;
 static unsigned count_flowReport = 0;
 static unsigned count_rangeSensorReport = 0;
 
-static bool armed = false;
 static unsigned cyclesSinceRadioCommand = 0;
+ArmedStatus volatile armedStatus = AS_notArmed_noMsgs;
+unsigned cycleCounter = 0;
+unsigned excessiveRatesCounter = 0;
 
 int logicThread(int argc, char *argv[]) {
   if (!orb_pub_actuatorCmds) {
@@ -184,6 +205,17 @@ int logicThread(int argc, char *argv[]) {
     return -1;
   }
 
+  float const cutoffFrequency_gyro = 200;
+  float const cutoffFrequency_acc = 20;
+
+  LowPassFilterSecondOrder<float, Vec3f> _filtAcc;
+  LowPassFilterSecondOrder<float, Vec3f> _filtGyro;
+
+  _filtAcc.Initialise(1.0f / ONBOARD_FREQUENCY, cutoffFrequency_acc,
+                      Vec3f(0, 0, 0));
+  _filtGyro.Initialise(1.0f / ONBOARD_FREQUENCY, cutoffFrequency_gyro,
+                       Vec3f(0, 0, 0));
+
   battery_status_s batt;
   sensor_accel_s acc;
   sensor_gyro_s gyro;
@@ -226,13 +258,18 @@ int logicThread(int argc, char *argv[]) {
   mlInputs.opticalFlowSensor.updated = false;
 
   //whether we allow the motors to turn
-  armed = false;
+  const unsigned SET_TO_ARMED_CYCLES = unsigned(2.0 * ONBOARD_FREQUENCY);  //in cycles
   const unsigned TIMEOUT_ARMED_CYCLES = unsigned(0.2 * ONBOARD_FREQUENCY);  //in cycles
+  const unsigned TIMEOUT_EXCESSIVE_RATES = unsigned(0.1 * ONBOARD_FREQUENCY);  //in cycles
+
+  const float FLOW_TO_RAD = float((4.2 * M_PI / 180.0) / 30.0);  //parameters taken from Bitcraze code
+  unsigned cyclesSinceLastFlowReport = 1;  //start at one, to avoid divide by zero on first run.
 
   bool updated;
   thread_running = true;
   while (thread_running) {
     sem_wait(&_sem);
+    cycleCounter++;
     perf_begin(perf_timer_obLogic);
 
     updated = false;
@@ -246,16 +283,27 @@ int logicThread(int argc, char *argv[]) {
       mlInputs.batteryVoltage.updated = false;
     }
 
+    static int cyclesSinceGoodBattValue = 0;
+    if (mlInputs.batteryVoltage.value > 3.0f) {
+      cyclesSinceGoodBattValue = 0;
+    } else {
+      cyclesSinceGoodBattValue++;
+    }
+
+    if (cyclesSinceGoodBattValue > 100) {
+      haveHadLowBattery = true;
+    }
+
     updated = false;
     orb_check(orb_sub_imuAccel, &updated);
     if (updated) {
       count_imuAccel++;
       orb_copy(ORB_ID(sensor_accel), orb_sub_imuAccel, &acc);
       mlInputs.imuMeasurement.updated = true;
-      mlInputs.imuMeasurement.accelerometer = Vec3f(
-          (1 / accCorr.k.x) * (acc.x - accCorr.b.x),
-          (1 / accCorr.k.y) * (acc.y - accCorr.b.y),
-          (1 / accCorr.k.z) * (acc.z - accCorr.b.z));
+      mlInputs.imuMeasurement.accelerometer = _filtAcc.Apply(
+          Vec3f((1 / accCorr.k.x) * (acc.x - accCorr.b.x),
+                (1 / accCorr.k.y) * (acc.y - accCorr.b.y),
+                (1 / accCorr.k.z) * (acc.z - accCorr.b.z)));
     } else {
       mlInputs.imuMeasurement.updated = false;
     }
@@ -266,7 +314,8 @@ int logicThread(int argc, char *argv[]) {
       count_imuGyro++;
       orb_copy(ORB_ID(sensor_gyro), orb_sub_imuGyro, &gyro);
       mlInputs.imuMeasurement.updated = true;
-      mlInputs.imuMeasurement.rateGyro = Vec3f(gyro.x, gyro.y, gyro.z);
+      mlInputs.imuMeasurement.rateGyro = _filtGyro.Apply(
+          Vec3f(gyro.x, gyro.y, gyro.z));
     } else {
       mlInputs.imuMeasurement.updated = false;
       //note, this means we only call it "updated" if gyro updates.
@@ -297,11 +346,6 @@ int logicThread(int argc, char *argv[]) {
       mlInputs.joystickInput.updated = true;
 
       cyclesSinceRadioCommand = 0;
-      if (msg.flags) {
-        armed = true;
-      } else {
-        armed = false;
-      }
     } else {
       cyclesSinceRadioCommand++;
       mlInputs.joystickInput.updated = false;
@@ -313,12 +357,18 @@ int logicThread(int argc, char *argv[]) {
       count_flowReport++;
       struct optical_flow_report_s flowReport;
       orb_copy(ORB_ID(optical_flow_report), orb_sub_flowReport, &flowReport);
-      mlInputs.opticalFlowSensor.value_x = flowReport.flow_x;
-      mlInputs.opticalFlowSensor.value_y = flowReport.flow_y;
+
+      float dt = cyclesSinceLastFlowReport / 500.0f;
+      cyclesSinceLastFlowReport = 0;
+      mlInputs.opticalFlowSensor.value_x = -float(flowReport.flow_x)
+          * FLOW_TO_RAD / dt;
+      mlInputs.opticalFlowSensor.value_y = -float(flowReport.flow_y)
+          * FLOW_TO_RAD / dt;
       mlInputs.opticalFlowSensor.updated = true;
     } else {
       mlInputs.opticalFlowSensor.updated = false;
     }
+    cyclesSinceLastFlowReport++;
 
     updated = false;
     orb_check(orb_sub_rangeSensorReport, &updated);
@@ -333,20 +383,67 @@ int logicThread(int argc, char *argv[]) {
       mlInputs.heightSensor.updated = false;
     }
 
+    mlInputs.currentTime = float(cycleCounter) / 500.0f;
+
     MainLoopOutput out = MainLoop(mlInputs);
+
+    //check arming:
+    static unsigned numCyclesStartPushed = 0;
+    if (mlInputs.joystickInput.buttonStart) {
+      numCyclesStartPushed++;
+    } else {
+      numCyclesStartPushed = 0;
+    }
+
+    if (numCyclesStartPushed >= SET_TO_ARMED_CYCLES) {
+      armedStatus = AS_armed;
+    }
+
+    const float EXCESSIVE_RATES = 25.0f;
+
+    if (mlInputs.imuMeasurement.rateGyro.GetNorm2Squared()
+        > (EXCESSIVE_RATES * EXCESSIVE_RATES)) {
+      excessiveRatesCounter++;
+    } else {
+      excessiveRatesCounter = 0;
+    }
 
     //collect outputs:
     actuatorCmds.nvalues = 4;
     //Note, we reshuffle the indices
     if (cyclesSinceRadioCommand > TIMEOUT_ARMED_CYCLES) {
       //timeout!
-      armed = false;
+      armedStatus = AS_notArmed;
     }
-    if (armed) {
+    if (haveHadLowBattery) {
+      armedStatus = AS_notArmed;
+    }
+    if (excessiveRatesCounter > TIMEOUT_EXCESSIVE_RATES) {
+      armedStatus = AS_notArmed;
+    }
+
+    if (armedStatus == AS_armed) {
+      led_on(LED_RED);
+    } else {
+      led_off(LED_RED);
+    }
+
+    if (armedStatus == AS_armed && mlInputs.joystickInput.buttonRed) {
+      unsigned const MIN_CMD = 0;
+      unsigned const MAX_CMD = 255;
       actuatorCmds.values[0] = out.motorCommand2;  //+x, -y
       actuatorCmds.values[1] = out.motorCommand4;  //-x, +y
       actuatorCmds.values[2] = out.motorCommand1;  //+x, +y
       actuatorCmds.values[3] = out.motorCommand3;  //-x, -y
+      //make sure we don't send bad values
+      for (unsigned ii = 0; ii < 4; ii++) {
+        if (actuatorCmds.values[ii] < MIN_CMD) {
+          actuatorCmds.values[ii] = MIN_CMD;
+        }
+        if (actuatorCmds.values[ii] > MAX_CMD) {
+          actuatorCmds.values[ii] = MAX_CMD;
+        }
+      }
     } else {
       //ignore commands!
       actuatorCmds.values[0] = 0;
@@ -355,9 +452,11 @@ int logicThread(int argc, char *argv[]) {
       actuatorCmds.values[3] = 0;
     }
 
-    // TODO: Telemetry
-
-//    logic.GetTelemetryDataPackets(dataPacket1, dataPacket2);
+    for (int i = 0; i < 4; i++) {
+      if (actuatorCmds.values[i] < 0) {
+        actuatorCmds.values[i] = 0;
+      }
+    }
 
     //do the uORB stuff
     bool orbErr = false;
@@ -399,7 +498,16 @@ int logicThread(int argc, char *argv[]) {
           i++) {
         pkt.debugVals[i] = out.telemetryOutputs_plusMinus100[i];
       }
-      pkt.debugchar = out.telemetryOutputDebugChar;
+      pkt.debugchar = 0;
+      if (haveHadLowBattery) {
+        pkt.debugchar |= 0x01;
+      }
+      if (armedStatus == AS_armed) {
+        pkt.debugchar |= 0x02;
+      }
+      if (armedStatus == AS_armed && mlInputs.joystickInput.buttonRed) {
+        pkt.debugchar |= 0x04;
+      }
       pkt.heightsensor = mlInputs.heightSensor.value;
       pkt.motorCmds[0] = out.motorCommand1;
       pkt.motorCmds[1] = out.motorCommand2;
@@ -448,31 +556,6 @@ int quad_main(int argc, char *argv[]) {
     return -1;
   }
 
-  if (!strcmp(argv[1], "setTeamId")) {
-    if (argc >= 3) {
-      int vehIdIn = atoi(argv[2]);
-      if ((vehIdIn >= 1) && (vehIdIn <= 255)) {
-        //valid argument
-        printf("setting vehicle ID to %d\n", vehIdIn);
-
-        if (param_set(param_find("VEHICLE_ID"), &vehIdIn)) {
-          printf("Failed to set parameter\n");
-        } else {
-          printf("Param set: to %d\n", vehIdIn);
-          printf("Now you *MUST* run `param save` to store the params\n");
-        }
-        return 0;
-      } else {
-        printf("Invalid type\n");
-      }
-    } else {
-      printf("Too few arguments\n");
-    }
-
-    printf("e.g. quad setTeamId 7\n");
-    return -1;
-  }
-
   if (!strcmp(argv[1], "start")) {
     if (thread_running) {
       printf("Thread already running\n");
@@ -484,11 +567,6 @@ int quad_main(int argc, char *argv[]) {
         verbose = true;
         printf("Setting to verbose mode\n");
       }
-    }
-
-    if (0 != param_get(param_find("VEHICLE_ID"), &teamID)) {
-      printf("Failed to get param <VEHICLE_ID>\n");
-      teamID = 0;
     }
 
     daemon_task = px4_task_spawn_cmd("logic_quad", SCHED_DEFAULT,
@@ -516,20 +594,31 @@ int quad_main(int argc, char *argv[]) {
   if (!strcmp(argv[1], "status")) {
     if (teamID == 0) {
       printf("ERROR!\nERROR!\nERROR!\nERROR!\n");
-      printf("You have an invalid team id set. \n");
       printf(
-          "Run the following, but replace `7` with your team's ID. Then turn the vehicle off and on.\n");
-      printf(" quad setTeamId 7\n\n");
+          "You have an invalid team id set. Please change this in <TeamID.hpp>, compile then flash the vehicle. \n");
     }
     if (thread_running) {
       printf("STATUS: \n Team ID = %d\n", teamID);
-      if (armed) {
+      if (armedStatus == AS_armed) {
         printf("vehicle is ARMED\n");
+      } else if (armedStatus == AS_notArmed_noMsgs) {
+        printf(
+            "vehicle is waiting for arming -- hold <start> button for 2 seconds to arm.\n");
       } else {
         printf("vehicle is not armed\n");
       }
-      printf("Cycles since last cmd = %ds\n", cyclesSinceRadioCommand);
+      if (haveHadLowBattery) {
+        printf(
+            "Vehicle has had low battery, and is now disabled. Replace with a charged battery.\n");
+      }
+
+      printf("Time since last cmd = %.3fs\n",
+             double(cyclesSinceRadioCommand) / ONBOARD_FREQUENCY);
+      printf("Time since start = %.3fs\n",
+             double(float(cycleCounter) / 500.0f));
+      printf("\n\n---- Begin print status ----\n");
       PrintStatus();
+      printf("==== End print status ====\n");
     } else {
       printf("\tquad not running\n");
     }

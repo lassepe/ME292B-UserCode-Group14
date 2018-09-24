@@ -69,6 +69,7 @@
 #include "syslink_main.h"
 #include "drv_deck.h"
 
+#include "../../ME136/TeamID.hpp"
 
 __BEGIN_DECLS
 extern void led_init(void);
@@ -181,16 +182,16 @@ Syslink::send_queued_raw_message()
 void
 Syslink::update_params(bool force_set)
 {
-	param_t _param_radio_channel = param_find("SLNK_RADIO_CHAN");
+//	param_t _param_radio_channel = param_find("SLNK_RADIO_CHAN");
 	param_t _param_radio_rate = param_find("SLNK_RADIO_RATE");
-	param_t _param_vehicle_id = param_find("VEHICLE_ID");
+	//disabled param_t _param_vehicle_id = param_find("VEHICLE_ID");
 
 	uint32_t channel, rate;
-	int vehId;
+	int vehId = ME136_TEAM_ID;
 
-	param_get(_param_radio_channel, &channel);
+//	param_get(_param_radio_channel, &channel);
 	param_get(_param_radio_rate, &rate);
-	param_get(_param_vehicle_id, &vehId);
+	//disabled param_get(_param_vehicle_id, &vehId);
 
 	uint64_t addr = 0;
 	if(vehId >= 1 && vehId < 255){
@@ -198,7 +199,14 @@ Syslink::update_params(bool force_set)
 	  uint8_t* indx = (uint8_t*) &addr;
 	  indx[4] = vehId;
 	  indx[3] = 0xE7;
-//	  addr = 0x0800000000;
+    // Space radios chanSpacing channels apart based on vehicle ID to prevent radio interference between crazyflies
+    // Code results in the following pattern: [convention: channel(vehId)]
+    // 5(1), 10(2), ..., 115(23), 120(24), 2(25), 7(26), ..., 117(48), 122(49), 4(50), 9(51), ...
+    // Note: Edit code in radio.c to ensure compatibility if changes are desired
+    const unsigned int NUM_CHANNELS = 125;
+    unsigned int chanSpacing = 5;  // Tested to work well
+    unsigned int chanOffset = 2 * ((vehId * chanSpacing) / NUM_CHANNELS);  // Offset channels once the channel range has been filled
+    channel = (vehId * chanSpacing + chanOffset) % NUM_CHANNELS;
 	}
 	else{
 	  return;
@@ -757,6 +765,8 @@ Syslink::print_status()
          int(_params_update[1]), int(_params_update[2]));
   printf("Param acks: %d; %d; %d\n", int(_params_ack[0]),
          int(_params_ack[1]), int(_params_ack[2]));
+
+  printf("Radio channel = %d, address = %0xd\n", this->_channel, this->_addr);
 
   printf("Param set acks still waiting:");
   if(0 == _params_ack[0]){

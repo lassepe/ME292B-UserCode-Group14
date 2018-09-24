@@ -76,6 +76,12 @@ float DecodeOnesRange(uint16_t t) {
  (see MapToOnesRange, EncodeOnesRange above)
  Limits were determined empirically. */
 enum TelemetryRanges {
+  TEL_MOTOR_CMD_MIN = 0,
+  TEL_MOTOR_CMD_MAX = 300,
+  TEL_RANGE_FLOW_MAX = 30,
+  TEL_RANGE_FLOW_MIN = -TEL_RANGE_FLOW_MAX,
+  TEL_RANGE_HEIGHT_MIN = 0,
+  TEL_RANGE_HEIGHT_MAX = 20,
   TEL_RANGE_GENERIC_MAX = 100,
   TEL_RANGE_GENERIC_MIN = -TEL_RANGE_GENERIC_MAX,
 
@@ -92,7 +98,7 @@ struct TelemetryPacket {
   float accel[3];
   float gyro[3];
   float motorCmds[4];
-  int opticalFlowx, opticalFlowy;
+  float opticalFlowx, opticalFlowy;
   float heightsensor;
   float battVoltage;
   /* seqNum = 1 -> packet includes position, attitude, velocity, panicReason */
@@ -115,14 +121,18 @@ void EncodeTelemetryPacket(TelemetryPacket const &src, data_packet_t &out) {
     }
     for (int i = 0; i < 4; i++) {
       out.data[i + 6] = EncodeOnesRange(
-          MapToOnesRange(src.motorCmds[i], TEL_RANGE_GENERIC_MIN,
-                         TEL_RANGE_GENERIC_MAX));
+          MapToOnesRange(src.motorCmds[i], TEL_MOTOR_CMD_MIN,
+                         TEL_MOTOR_CMD_MAX));
     }
-    out.data[10] = uint16_t(src.opticalFlowx + (1 << 15));
-    out.data[11] = uint16_t(src.opticalFlowy + (1 << 15));
+    out.data[10] = EncodeOnesRange(
+        MapToOnesRange(src.opticalFlowx, TEL_RANGE_FLOW_MIN,
+                       TEL_RANGE_FLOW_MAX));
+    out.data[11] = EncodeOnesRange(
+        MapToOnesRange(src.opticalFlowy, TEL_RANGE_FLOW_MIN,
+                       TEL_RANGE_FLOW_MAX));
     out.data[12] = EncodeOnesRange(
-        MapToOnesRange(src.heightsensor, TEL_RANGE_GENERIC_MIN,
-                       TEL_RANGE_GENERIC_MAX));
+        MapToOnesRange(src.heightsensor, TEL_RANGE_HEIGHT_MIN,
+                       TEL_RANGE_HEIGHT_MAX));
 
     out.data[13] = EncodeOnesRange(
         MapToOnesRange(src.battVoltage, TEL_RANGE_GENERIC_MIN,
@@ -155,10 +165,12 @@ void DecodeTelemetryPacket(data_packet_t const &in, TelemetryPacket &out) {
       out.motorCmds[i] = MapToAB(DecodeOnesRange(in.data[i + 6]),
                                  TEL_RANGE_GENERIC_MIN, TEL_RANGE_GENERIC_MAX);
     }
-    out.opticalFlowx = int(in.data[10]) - (1 << 15);
-    out.opticalFlowy = int(in.data[11]) - (1 << 15);
+    out.opticalFlowx = MapToAB(DecodeOnesRange(in.data[10]), TEL_RANGE_FLOW_MIN,
+                               TEL_RANGE_FLOW_MAX);
+    out.opticalFlowy = MapToAB(DecodeOnesRange(in.data[11]), TEL_RANGE_FLOW_MIN,
+                               TEL_RANGE_FLOW_MAX);
     out.heightsensor = MapToAB(DecodeOnesRange(in.data[12]),
-                               TEL_RANGE_GENERIC_MIN, TEL_RANGE_GENERIC_MAX);
+                               TEL_RANGE_HEIGHT_MIN, TEL_RANGE_HEIGHT_MAX);
     out.battVoltage = MapToAB(DecodeOnesRange(in.data[13]),
                               TEL_RANGE_GENERIC_MIN, TEL_RANGE_GENERIC_MAX);
 

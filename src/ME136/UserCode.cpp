@@ -1,4 +1,6 @@
 #include "UserCode.hpp"
+#include "UtilityFunctions.hpp"
+#include "Vec3f.hpp"
 
 #include <stdio.h> //for printf
 
@@ -11,29 +13,47 @@ int exampleVariable_int = 0;
 MainLoopInput lastMainLoopInputs;
 MainLoopOutput lastMainLoopOutputs;
 
+//Some constants that we may use:
+const float mass = 30e-3f;  // mass of the quadcopter [kg]
+const float gravity = 9.81f;  // acceleration of gravity [m/s^2]
+const float inertia_xx = 16e-6f;  //MMOI about x axis [kg.m^2]
+const float inertia_yy = inertia_xx;  //MMOI about y axis [kg.m^2]
+const float inertia_zz = 29e-6f;  //MMOI about z axis [kg.m^2]
+
+const float dt = 1.0f / 500.0f; //[s] period between successive calls to MainLoop
+
 MainLoopOutput MainLoop(MainLoopInput const &in) {
   //Your code goes here!
+  // The function input (named "in") is a struct of type
+  // "MainLoopInput". You can understand what values it
+  // contains by going to its definition (click on "MainLoopInput",
+  // and then hit <F3> -- this should take you to the definition).
+  // For example, "in.joystickInput.buttonBlue" is true if the
+  // joystick's blue button is pushed, false otherwise.
 
-  //Define the output numbers:
+  //Define the output numbers (in the struct outVals):
   MainLoopOutput outVals;
-  outVals.motorCommand1 = 0;
-  outVals.motorCommand2 = 0;
-  outVals.motorCommand3 = 0;
-  outVals.motorCommand4 = 0;
+//  motorCommand1 -> located at body +x +y
+//  motorCommand2 -> located at body +x -y
+//  motorCommand3 -> located at body -x -y
+//  motorCommand4 -> located at body -x +y
 
-//  int motorCommand1; // located at body +x +y
-//  int motorCommand2; // located at body +x -y
-//  int motorCommand3; // located at body -x -y
-//  int motorCommand4; // located at body -x +y
-  outVals.motorCommand1 = in.joystickInput.buttonBlue ? 50 : 0;
-  outVals.motorCommand2 = in.joystickInput.buttonBlue ? 50 : 0;
-  outVals.motorCommand3 = in.joystickInput.buttonBlue ? 50 : 0;
-  outVals.motorCommand4 = in.joystickInput.buttonBlue ? 50 : 0;
-
-  outVals.led1 = 0;
-  outVals.led2 = 0;
-  outVals.led3 = 0;
-  outVals.led4 = 0;
+  // OUR CODE HERE......................................................
+  // check if blue button is pushed
+  if (in.joystickInput.buttonBlue) {
+    // set motor speed to 50
+    outVals.motorCommand1 = 50;
+    outVals.motorCommand2 = 50;
+    outVals.motorCommand3 = 50;
+    outVals.motorCommand4 = 50;
+  }
+  else{
+    // otherwise set motor speed to 0
+    outVals.motorCommand1 = 0;
+    outVals.motorCommand2 = 0;
+    outVals.motorCommand3 = 0;
+    outVals.motorCommand4 = 0;
+  }
 
   //copy the inputs and outputs:
   lastMainLoopInputs = in;
@@ -42,9 +62,21 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
 }
 
 void PrintStatus() {
-  printf("\n\n---- Begin print status ----\n");
   //For a quick reference on the printf function, see: http://www.cplusplus.com/reference/cstdio/printf/
   // Note that \n is a "new line" character.
+  // Also, note that to print a `float` variable, you have to explicitly cast it to
+  //  `double` in the printf function, and explicitly specify precision using something
+  //  like %6.3f (six significant digits, three after the period). Example:
+  //   printf("  exampleVariable_float = %6.3f\n", double(exampleVariable_float));
+
+  //Accelerometer measurement
+  printf("Acc: ");
+  printf("x=%6.3f, ",
+         double(lastMainLoopInputs.imuMeasurement.accelerometer.x));
+  printf("\n");  //new line
+  printf("Gyro: ");
+  printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.x));
+  printf("\n");  //new line
 
   printf("Example variable values:\n");
   printf("  exampleVariable_int = %d\n", exampleVariable_int);
@@ -81,7 +113,4 @@ void PrintStatus() {
   printf("Last main loop outputs:\n");
   printf("  motor command 1 = %6.3f\n",
          double(lastMainLoopOutputs.motorCommand1));
-  printf("Optical flow = %d, %d\n", lastMainLoopInputs.opticalFlowSensor.value_x, lastMainLoopInputs.opticalFlowSensor.value_y);
-  printf("height = %6.3f\n", double(lastMainLoopInputs.heightSensor.value));
-  printf("==== End print status ====\n");
 }

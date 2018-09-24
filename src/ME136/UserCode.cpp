@@ -46,8 +46,7 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
     outVals.motorCommand2 = 50;
     outVals.motorCommand3 = 50;
     outVals.motorCommand4 = 50;
-  }
-  else{
+  } else {
     // otherwise set motor speed to 0
     outVals.motorCommand1 = 0;
     outVals.motorCommand2 = 0;

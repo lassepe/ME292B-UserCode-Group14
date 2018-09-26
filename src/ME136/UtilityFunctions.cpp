@@ -1,16 +1,14 @@
 #include "UtilityFunctions.hpp"
 
 int pwmCommandFromSpeed(float desiredSpeed_rad_per_sec) {
-  // Replace these two coefficients with what you get
-  // in the experiment. Note the trailing "f" after the
-  // number -- this ensures that we use single precision
-  // floating point (rather than double precision, which
-  // would be substantially slower on the microcontroller).
-  float a = 0.0f;  // the zeroth order term
-  float b = 0.0f;  // the first order term
+  // the slope of the speedToPWM map
+  const float m = 0.1118f;
+  // the bias of the speedToPWMmap
+  const float b = -66.637f;
 
-  return int(a + b * desiredSpeed_rad_per_sec);
+  return int(b + m * desiredSpeed_rad_per_sec);
 }
+
 
 float speedFromForce(float desiredForce_N) {
   // replace this with your determined constant:

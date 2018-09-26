@@ -66,6 +66,7 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   if (in.joystickInput.buttonBlue) {
     // set motor speed to 50
     outVals.motorCommand1 = desiredPWM[currentPWMIndex];
+    printf("Current PWM command: %d", outVals.motorCommand1);
     outVals.motorCommand2 = 0;
     outVals.motorCommand3 = 0;
     outVals.motorCommand4 = 0;
@@ -81,15 +82,6 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   lastMainLoopInputs = in;
   lastMainLoopOutputs = outVals;
   return outVals;
-}
-
-int pwmCommandFromSpeed(float desiredSpeed_rad_per_sec) {
-  // the slope of the speedToPWM map
-  const float m = 0.1118f;
-  // the bias of the speedToPWMmap
-  const float b = -66.637f;
-
-  return int(b + m * desiredSpeed_rad_per_sec);
 }
 
 void PrintStatus() {

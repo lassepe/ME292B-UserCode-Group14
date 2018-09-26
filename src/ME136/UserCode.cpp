@@ -14,13 +14,21 @@ MainLoopInput lastMainLoopInputs;
 MainLoopOutput lastMainLoopOutputs;
 
 //Some constants that we may use:
-const float mass = 30e-3f;  // mass of the quadcopter [kg]
+const float mass = 32e-3f;  // mass of the quadcopter [kg]
 const float gravity = 9.81f;  // acceleration of gravity [m/s^2]
 const float inertia_xx = 16e-6f;  //MMOI about x axis [kg.m^2]
 const float inertia_yy = inertia_xx;  //MMOI about y axis [kg.m^2]
 const float inertia_zz = 29e-6f;  //MMOI about z axis [kg.m^2]
 
 const float dt = 1.0f / 500.0f; //[s] period between successive calls to MainLoop
+
+// Some state to cycle through the different PWM values
+// some ugly state
+int currentPWMIndex = 0;
+// state to figure out which button was used
+bool resetButtonWasPressed = false;
+// check if blue button is pushed
+const int desiredPWM[6] = {40, 80, 120, 160, 200, 240};
 
 MainLoopOutput MainLoop(MainLoopInput const &in) {
   //Your code goes here!
@@ -38,14 +46,29 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
 //  motorCommand3 -> located at body -x -y
 //  motorCommand4 -> located at body -x +y
 
-  // OUR CODE HERE......................................................
-  // check if blue button is pushed
+
+  // if the reset button was pressed before we can set a new value
+  if (in.joystickInput.buttonGreen)
+  {
+    // green is our reset button which has to be pressed before we can
+    // increment
+    resetButtonWasPressed = true;
+  }
+  else if (resetButtonWasPressed && in.joystickInput.buttonYellow)
+  {
+    currentPWMIndex++;
+    // wrap around
+    currentPWMIndex %= 6;
+    resetButtonWasPressed = false;
+  }
+
+  // cycling through the different rpm values
   if (in.joystickInput.buttonBlue) {
     // set motor speed to 50
-    outVals.motorCommand1 = 50;
-    outVals.motorCommand2 = 50;
-    outVals.motorCommand3 = 50;
-    outVals.motorCommand4 = 50;
+    outVals.motorCommand1 = desiredPWM[currentPWMIndex];
+    outVals.motorCommand2 = 0;
+    outVals.motorCommand3 = 0;
+    outVals.motorCommand4 = 0;
   } else {
     // otherwise set motor speed to 0
     outVals.motorCommand1 = 0;
@@ -58,6 +81,15 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   lastMainLoopInputs = in;
   lastMainLoopOutputs = outVals;
   return outVals;
+}
+
+int pwmCommandFromSpeed(float desiredSpeed_rad_per_sec) {
+  // the slope of the speedToPWM map
+  const float m = 0.1118f;
+  // the bias of the speedToPWMmap
+  const float b = -66.637f;
+
+  return int(b + m * desiredSpeed_rad_per_sec);
 }
 
 void PrintStatus() {

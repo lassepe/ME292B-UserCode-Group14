@@ -25,10 +25,12 @@ const float dt = 1.0f / 500.0f; //[s] period between successive calls to MainLoo
 // Some state to cycle through the different PWM values
 // some ugly state
 int currentPWMIndex = 0;
+int currentSpeedIndex=0;
 // state to figure out which button was used
 bool resetButtonWasPressed = false;
 // check if blue button is pushed
 const int desiredPWM[6] = {40, 80, 120, 160, 200, 240};
+const int desiredSpeed[4]={1000, 1200, 1400, 1600};
 
 MainLoopOutput MainLoop(MainLoopInput const &in) {
   //Your code goes here!
@@ -57,16 +59,18 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   else if (resetButtonWasPressed && in.joystickInput.buttonYellow)
   {
     currentPWMIndex++;
+    currentSpeedIndex++;
     // wrap around
     currentPWMIndex %= 6;
+    currentSpeedIndex %= 4;
     resetButtonWasPressed = false;
   }
 
   // cycling through the different rpm values
   if (in.joystickInput.buttonBlue) {
     // set motor speed to 50
-    outVals.motorCommand1 = desiredPWM[currentPWMIndex];
-    printf("Current PWM command: %d", outVals.motorCommand1);
+    //outVals.motorCommand1 = desiredPWM[currentPWMIndex];
+    outVals.motorCommand1 = pwmCommandFromSpeed(desiredSpeed[currentSpeedIndex]);
     outVals.motorCommand2 = 0;
     outVals.motorCommand3 = 0;
     outVals.motorCommand4 = 0;
@@ -103,12 +107,14 @@ void PrintStatus() {
 
   printf("Example variable values:\n");
   printf("  exampleVariable_int = %d\n", exampleVariable_int);
+  //printf("Current PWM command: %d\n", desiredPWM[currentPWMIndex]);
+  printf("Current Speed command: %d\n", desiredSpeed[currentSpeedIndex]);
   //Note that it is somewhat annoying to print float variables.
   //  We need to cast the variable as double, and we need to specify
   //  the number of digits we want (if you used simply "%f", it would
   //  truncate to an integer.
   //  Here, we print 6 digits, with three digits after the period.
-  printf("  exampleVariable_float = %6.3f\n", double(exampleVariable_float));
+  //printf("  exampleVariable_float = %6.3f\n", double(exampleVariable_float));
 
   //We print the Vec3f by printing it's three components independently:
   printf("  exampleVariable_Vec3f = (%6.3f, %6.3f, %6.3f)\n",

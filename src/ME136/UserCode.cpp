@@ -70,10 +70,11 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   if (in.joystickInput.buttonBlue) {
     // set motor speed to 50
     //outVals.motorCommand1 = desiredPWM[currentPWMIndex];
-    outVals.motorCommand1 = pwmCommandFromSpeed(desiredSpeed[currentSpeedIndex]);
-    outVals.motorCommand2 = 0;
-    outVals.motorCommand3 = 0;
-    outVals.motorCommand4 = 0;
+    const int pwmCommand = pwmCommandFromSpeed(desiredSpeed[currentSpeedIndex]);
+    outVals.motorCommand1 = pwmCommand;
+    outVals.motorCommand2 = pwmCommand;
+    outVals.motorCommand3 = pwmCommand;
+    outVals.motorCommand4 = pwmCommand;
   } else {
     // otherwise set motor speed to 0
     outVals.motorCommand1 = 0;

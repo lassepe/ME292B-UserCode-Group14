@@ -25,3 +25,29 @@ float speedFromForce(float desiredForce_N) {
   return sqrtf(desiredForce_N / propConstant);
 }
 
+void setMotorCommand(const MotorID motorID, const int pwmCommand, MainLoopOutput& out)
+{
+  switch(motorID)
+  {
+    case MotorID::ALL:
+      out.motorCommand1 = pwmCommand;
+      out.motorCommand2 = pwmCommand;
+      out.motorCommand3 = pwmCommand;
+      out.motorCommand4 = pwmCommand;
+      break;
+    case MotorID::FRONT_LEFT:
+      out.motorCommand1 = pwmCommand;
+      break;
+    case MotorID::FRONT_RIGHT:
+      out.motorCommand2 = pwmCommand;
+      break;
+    case MotorID::REAR_RIGHT:
+      out.motorCommand3 = pwmCommand;
+      break;
+    case MotorID::REAR_LEFT:
+      out.motorCommand4 = pwmCommand;
+      break;
+    default:
+      break;
+  }
+}

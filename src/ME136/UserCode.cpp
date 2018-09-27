@@ -1,6 +1,6 @@
 #include "UserCode.hpp"
-#include "UtilityFunctions.hpp"
 #include "Vec3f.hpp"
+#include "UAVConstants.hpp"
 
 #include <stdio.h> //for printf
 
@@ -13,80 +13,79 @@ int exampleVariable_int = 0;
 MainLoopInput lastMainLoopInputs;
 MainLoopOutput lastMainLoopOutputs;
 
-//Some constants that we may use:
-const float mass = 32e-3f;  // mass of the quadcopter [kg]
-const float gravity = 9.81f;  // acceleration of gravity [m/s^2]
-const float inertia_xx = 16e-6f;  //MMOI about x axis [kg.m^2]
-const float inertia_yy = inertia_xx;  //MMOI about y axis [kg.m^2]
-const float inertia_zz = 29e-6f;  //MMOI about z axis [kg.m^2]
+// a namespace to wrap the scope of some state variables
+namespace UserInputState {
+  // Some state to cycle through the different PWM values
+  int currentPWMIndex = 0;
+  // Some state to cycle through the different speed values
+  int currentSpeedIndex = 0;
+  // state to figure out which button was used
+  bool resetButtonWasPressed = false;
+  // the pwm values the user can select from
+  const int desiredPWM[6] = {40, 80, 120, 160, 200, 240};
+  // the speed values the user can select from
+  const int desiredSpeed[4] = {1000, 1200, 1400, 1600};
+};
 
-const float dt = 1.0f / 500.0f; //[s] period between successive calls to MainLoop
-
-// Some state to cycle through the different PWM values
-// some ugly state
-int currentPWMIndex = 0;
-int currentSpeedIndex=0;
-// state to figure out which button was used
-bool resetButtonWasPressed = false;
-// check if blue button is pushed
-const int desiredPWM[6] = {40, 80, 120, 160, 200, 240};
-const int desiredSpeed[4]={1000, 1200, 1400, 1600};
-
-MainLoopOutput MainLoop(MainLoopInput const &in) {
-  //Your code goes here!
-  // The function input (named "in") is a struct of type
-  // "MainLoopInput". You can understand what values it
-  // contains by going to its definition (click on "MainLoopInput",
-  // and then hit <F3> -- this should take you to the definition).
-  // For example, "in.joystickInput.buttonBlue" is true if the
-  // joystick's blue button is pushed, false otherwise.
-
-  //Define the output numbers (in the struct outVals):
-  MainLoopOutput outVals;
-//  motorCommand1 -> located at body +x +y
-//  motorCommand2 -> located at body +x -y
-//  motorCommand3 -> located at body -x -y
-//  motorCommand4 -> located at body -x +y
-
-
+void updateInputState(const MainLoopInput& in) {
   // if the reset button was pressed before we can set a new value
   if (in.joystickInput.buttonGreen)
   {
     // green is our reset button which has to be pressed before we can
     // increment
-    resetButtonWasPressed = true;
+    UserInputState::resetButtonWasPressed = true;
   }
-  else if (resetButtonWasPressed && in.joystickInput.buttonYellow)
+  else if (UserInputState::resetButtonWasPressed && in.joystickInput.buttonYellow)
   {
-    currentPWMIndex++;
-    currentSpeedIndex++;
+    UserInputState::currentPWMIndex++;
+    UserInputState::currentSpeedIndex++;
     // wrap around
-    currentPWMIndex %= 6;
-    currentSpeedIndex %= 4;
-    resetButtonWasPressed = false;
+    UserInputState::currentPWMIndex %= 6;
+    UserInputState::currentSpeedIndex %= 4;
+    UserInputState::resetButtonWasPressed = false;
   }
+}
 
+const MainLoopOutput userSetDesiredSpeed(const MainLoopInput& in,
+                                         const MotorID motorID) {
+  MainLoopOutput out;
   // cycling through the different rpm values
   if (in.joystickInput.buttonBlue) {
-    // set motor speed to 50
-    //outVals.motorCommand1 = desiredPWM[currentPWMIndex];
-    const int pwmCommand = pwmCommandFromSpeed(desiredSpeed[currentSpeedIndex]);
-    outVals.motorCommand1 = pwmCommand;
-    outVals.motorCommand2 = pwmCommand;
-    outVals.motorCommand3 = pwmCommand;
-    outVals.motorCommand4 = pwmCommand;
-  } else {
-    // otherwise set motor speed to 0
-    outVals.motorCommand1 = 0;
-    outVals.motorCommand2 = 0;
-    outVals.motorCommand3 = 0;
-    outVals.motorCommand4 = 0;
+    const int pwmCommand = pwmCommandFromSpeed(
+        UserInputState::desiredSpeed[UserInputState::currentSpeedIndex]);
+    setMotorCommand(motorID, pwmCommand, out);
   }
+  return out;
+}
+
+const MainLoopOutput userSetDesiredPWMCommand(const MainLoopInput& in,
+                                              const MotorID motorID) {
+  MainLoopOutput out;
+  // only set the value of the blue button is pressed
+  if (in.joystickInput.buttonBlue) {
+    // select the desired pwm signal
+    const int pwmCommand =
+        UserInputState::desiredPWM[UserInputState::currentPWMIndex];
+    // set the desired speed for the motors as specified
+    setMotorCommand(motorID, pwmCommand, out);
+  }
+  return out;
+}
+
+MainLoopOutput MainLoop(MainLoopInput const &in) {
+  // Declaring the output
+  MainLoopOutput out;
+  // process user input to update states
+  updateInputState(in);
+  // set the pwm values
+  // out = userSetDesiredPWMCommand(in, MotorID::FRONT_LEFT);
+  // set speed values
+  out = userSetDesiredSpeed(in, MotorID::ALL);
 
   //copy the inputs and outputs:
   lastMainLoopInputs = in;
-  lastMainLoopOutputs = outVals;
-  return outVals;
+  lastMainLoopOutputs = out;
+  return out;
 }
 
 void PrintStatus() {
@@ -109,7 +108,7 @@ void PrintStatus() {
   printf("Example variable values:\n");
   printf("  exampleVariable_int = %d\n", exampleVariable_int);
   //printf("Current PWM command: %d\n", desiredPWM[currentPWMIndex]);
-  printf("Current Speed command: %d\n", desiredSpeed[currentSpeedIndex]);
+  printf("Current Speed command: %d\n", UserInputState::desiredSpeed[UserInputState::currentSpeedIndex]);
   //Note that it is somewhat annoying to print float variables.
   //  We need to cast the variable as double, and we need to specify
   //  the number of digits we want (if you used simply "%f", it would

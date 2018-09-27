@@ -49,10 +49,10 @@ struct MainLoopInput {
 };
 
 struct MainLoopOutput {
-  int motorCommand1;  // located at body +x +y
-  int motorCommand2;  // located at body +x -y
-  int motorCommand3;  // located at body -x -y
-  int motorCommand4;  // located at body -x +y
+  int motorCommand1 = 0;  // located at body +x +y
+  int motorCommand2 = 0;  // located at body +x -y
+  int motorCommand3 = 0;  // located at body -x -y
+  int motorCommand4 = 0;  // located at body -x +y
 
   //variables that are only used for telemetry:
   float telemetryOutputs_plusMinus100[12];  // NOTE! These are bounded to be in +/- 100

@@ -23,8 +23,8 @@ namespace UserInputState {
   bool resetButtonWasPressed = false;
   // the pwm values the user can select from
   const int desiredPWM[6] = {40, 80, 120, 160, 200, 240};
-  // the speed values the user can select from
-  const int desiredSpeed[4] = {1000, 1200, 1400, 1600};
+  // Set Force value
+  const int desiredSpeed[4] = {speedFromForce(0.0706)};
 };
 
 void updateInputState(const MainLoopInput& in) {

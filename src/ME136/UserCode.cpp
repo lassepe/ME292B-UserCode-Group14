@@ -81,6 +81,7 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   // out = userSetDesiredPWMCommand(in, MotorID::FRONT_LEFT);
   // set speed values
   out = userSetDesiredSpeed(in, MotorID::ALL);
+  //out = userSetDesiredPWM(in, MotorID::ALL);
 
   //copy the inputs and outputs:
   lastMainLoopInputs = in;

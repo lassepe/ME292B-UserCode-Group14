@@ -24,7 +24,8 @@ namespace UserInputState {
   // the pwm values the user can select from
   const int desiredPWM[6] = {40, 80, 120, 160, 200, 240};
   // Set Force value
-  const int desiredSpeed[4] = {speedFromForce(0.0706)};
+  //const int desiredSpeed[4] = {speedFromForce(0.0706)};
+  const int desiredSpeed[4] = {1000, 1200, 1400, 1600};
 };
 
 void updateInputState(const MainLoopInput& in) {
@@ -101,9 +102,15 @@ void PrintStatus() {
   printf("Acc: ");
   printf("x=%6.3f, ",
          double(lastMainLoopInputs.imuMeasurement.accelerometer.x));
+  printf("x=%6.3f, ",
+          double(lastMainLoopInputs.imuMeasurement.accelerometer.y));
+  printf("x=%6.3f, ",
+          double(lastMainLoopInputs.imuMeasurement.accelerometer.z));
   printf("\n");  //new line
   printf("Gyro: ");
   printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.x));
+  printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.y));
+  printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.z));
   printf("\n");  //new line
 
   printf("Example variable values:\n");

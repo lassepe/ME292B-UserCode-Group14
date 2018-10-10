@@ -9,6 +9,15 @@ float exampleVariable_float = 0.0f;  //Note the trailing 'f' in the number. This
 Vec3f exampleVariable_Vec3f = Vec3f(0, 0, 0);
 int exampleVariable_int = 0;
 
+//Bias of gyro
+Vec3f estGyroBias  = Vec3f(0,0,0);
+
+//Estimation of angles
+float estRoll = 0;
+float estPitch = 0;
+float estYaw = 0;
+
+float g = 9.81f;
 //We keep the last inputs and outputs around for debugging:
 MainLoopInput lastMainLoopInputs;
 MainLoopOutput lastMainLoopOutputs;
@@ -78,11 +87,41 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   MainLoopOutput out;
   // process user input to update states
   updateInputState(in);
+
+  //Calibration of rate gyro
+  if (in.currentTime < 1.0f) {
+    estGyroBias = estGyroBias + (in.imuMeasurement.rateGyro / 500.0f);
+
+    //early return while calibrating
+    return out;
+  }
+  Vec3f rateGyro_corr = in.imuMeasurement.rateGyro - estGyroBias;
+
+  //Measurement of angles
+  float phi_meas = in.imuMeasurement.accelerometer.y / g;
+  float theta_meas = - in.imuMeasurement.accelerometer.x / g;
+
+  //Estimation of angles
+  float rho = 0.01f;
+
+  estRoll = (1-rho)*(estRoll + 0.002f*rateGyro_corr.x) + rho*phi_meas;
+  estPitch = (1-rho)*(estPitch + 0.002f*rateGyro_corr.y) + rho*theta_meas;
+  estYaw = estYaw + 0.002f*rateGyro_corr.z;
+
   // set the pwm values
   // out = userSetDesiredPWMCommand(in, MotorID::FRONT_LEFT);
   // set speed values
   out = userSetDesiredSpeed(in, MotorID::ALL);
   //out = userSetDesiredPWM(in, MotorID::ALL);
+
+  out.telemetryOutputs_plusMinus100[0] = estRoll;
+  out.telemetryOutputs_plusMinus100[1] = estPitch;
+  out.telemetryOutputs_plusMinus100[2] = estYaw;
+
+  out.telemetryOutputs_plusMinus100[3] = rateGyro_corr.x;
+  out.telemetryOutputs_plusMinus100[4] = rateGyro_corr.y;
+  out.telemetryOutputs_plusMinus100[5] = rateGyro_corr.z;
+
 
   //copy the inputs and outputs:
   lastMainLoopInputs = in;
@@ -102,15 +141,31 @@ void PrintStatus() {
   printf("Acc: ");
   printf("x=%6.3f, ",
          double(lastMainLoopInputs.imuMeasurement.accelerometer.x));
-  printf("x=%6.3f, ",
+  printf("y=%6.3f, ",
           double(lastMainLoopInputs.imuMeasurement.accelerometer.y));
-  printf("x=%6.3f, ",
+  printf("z=%6.3f, ",
           double(lastMainLoopInputs.imuMeasurement.accelerometer.z));
   printf("\n");  //new line
   printf("Gyro: ");
   printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.x));
-  printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.y));
-  printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.z));
+  printf("y=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.y));
+  printf("z=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.z));
+  printf("\n");  //new line
+  printf("Bias of gyro: ");
+  printf("x=%6.3f, ", double(estGyroBias.x));
+  printf("y=%6.3f, ", double(estGyroBias.y));
+  printf("z=%6.3f, ", double(estGyroBias.z));
+  printf("\n");  //new line
+  printf("Corrected gyro: ");
+  printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.x - estGyroBias.x));
+  printf("y=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.y - estGyroBias.y));
+  printf("z=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.z - estGyroBias.z));
+  printf("\n");  //new line
+
+  printf("Estimated angles: ");
+  printf("Roll=%6.3f, ", double(estRoll));
+  printf("Pitch=%6.3f, ", double(estPitch));
+  printf("Yaw=%6.3f, ", double(estYaw));
   printf("\n");  //new line
 
   printf("Example variable values:\n");

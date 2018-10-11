@@ -1,3 +1,5 @@
+#pragma once
+
 //Some constants that we may use
 namespace UAVConstants {
   const float mass = 32e-3f;  // mass of the quadcopter [kg]

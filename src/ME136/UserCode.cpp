@@ -1,23 +1,11 @@
 #include "UserCode.hpp"
 #include "Vec3f.hpp"
 #include "UAVConstants.hpp"
+#include "SensorCalibration.hpp"
+#include "StateEstimation.hpp"
 
 #include <stdio.h> //for printf
 
-//An example of a variable that persists beyond the function call.
-float exampleVariable_float = 0.0f;  //Note the trailing 'f' in the number. This is to force single precision floating point.
-Vec3f exampleVariable_Vec3f = Vec3f(0, 0, 0);
-int exampleVariable_int = 0;
-
-//Bias of gyro
-Vec3f estGyroBias  = Vec3f(0,0,0);
-
-//Estimation of angles
-float estRoll = 0;
-float estPitch = 0;
-float estYaw = 0;
-
-float g = 9.81f;
 //We keep the last inputs and outputs around for debugging:
 MainLoopInput lastMainLoopInputs;
 MainLoopOutput lastMainLoopOutputs;
@@ -32,10 +20,17 @@ namespace UserInputState {
   bool resetButtonWasPressed = false;
   // the pwm values the user can select from
   const int desiredPWM[6] = {40, 80, 120, 160, 200, 240};
-  // Set Force value
-  //const int desiredSpeed[4] = {speedFromForce(0.0706)};
+  // the speed values the user can select from
   const int desiredSpeed[4] = {1000, 1200, 1400, 1600};
 };
+
+// the calibration module of the system, handling the calibration of the
+// sensors (for details see documentation within the class)
+SensorCalibration sensorCalibration = SensorCalibration(500);
+// the state estimation module of the system, handling the estimation of the
+// current state. This needs to be created AFTER the calibration at it makes
+// use of the calibrated offsets.
+StateEstimation stateEstimation = StateEstimation(0.1, sensorCalibration);
 
 void updateInputState(const MainLoopInput& in) {
   // if the reset button was pressed before we can set a new value
@@ -83,47 +78,21 @@ const MainLoopOutput userSetDesiredPWMCommand(const MainLoopInput& in,
 }
 
 MainLoopOutput MainLoop(MainLoopInput const &in) {
-  // Declaring the output
+  // the main loop out
   MainLoopOutput out;
-  // process user input to update states
-  updateInputState(in);
-
-  //Calibration of rate gyro
-  if (in.currentTime < 1.0f) {
-    estGyroBias = estGyroBias + (in.imuMeasurement.rateGyro / 500.0f);
-
-    //early return while calibrating
-    return out;
+  // if the calibration is still running we have to return early
+  if(!sensorCalibration.run(in))
+  {
+    // only do things if the calibration is finished.
+    stateEstimation.update(in, UAVConstants::dt);
   }
-  Vec3f rateGyro_corr = in.imuMeasurement.rateGyro - estGyroBias;
 
-  //Measurement of angles
-  float phi_meas = in.imuMeasurement.accelerometer.y / g;
-  float theta_meas = - in.imuMeasurement.accelerometer.x / g;
-
-  //Estimation of angles
-  float rho = 0.01f;
-
-  estRoll = (1-rho)*(estRoll + 0.002f*rateGyro_corr.x) + rho*phi_meas;
-  estPitch = (1-rho)*(estPitch + 0.002f*rateGyro_corr.y) + rho*theta_meas;
-  estYaw = estYaw + 0.002f*rateGyro_corr.z;
-
-  // set the pwm values
-  // out = userSetDesiredPWMCommand(in, MotorID::FRONT_LEFT);
-  // set speed values
-  out = userSetDesiredSpeed(in, MotorID::ALL);
-  //out = userSetDesiredPWM(in, MotorID::ALL);
-
-  out.telemetryOutputs_plusMinus100[0] = estRoll;
-  out.telemetryOutputs_plusMinus100[1] = estPitch;
-  out.telemetryOutputs_plusMinus100[2] = estYaw;
-
-  out.telemetryOutputs_plusMinus100[3] = rateGyro_corr.x;
-  out.telemetryOutputs_plusMinus100[4] = rateGyro_corr.y;
-  out.telemetryOutputs_plusMinus100[5] = rateGyro_corr.z;
-
-
-  //copy the inputs and outputs:
+  // get the current attitude estimate to send it via telemetry
+  const auto euluerEst = stateEstimation.getAttitudeEst();
+  out.telemetryOutputs_plusMinus100[0] = euluerEst.x;
+  out.telemetryOutputs_plusMinus100[1] = euluerEst.y;
+  out.telemetryOutputs_plusMinus100[2] = euluerEst.z;
+  // copy the inputs and outputs for printing
   lastMainLoopInputs = in;
   lastMainLoopOutputs = out;
   return out;
@@ -138,52 +107,61 @@ void PrintStatus() {
   //   printf("  exampleVariable_float = %6.3f\n", double(exampleVariable_float));
 
   //Accelerometer measurement
-  printf("Acc: ");
-  printf("x=%6.3f, ",
-         double(lastMainLoopInputs.imuMeasurement.accelerometer.x));
-  printf("y=%6.3f, ",
-          double(lastMainLoopInputs.imuMeasurement.accelerometer.y));
-  printf("z=%6.3f, ",
-          double(lastMainLoopInputs.imuMeasurement.accelerometer.z));
-  printf("\n");  //new line
-  printf("Gyro: ");
-  printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.x));
-  printf("y=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.y));
-  printf("z=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.z));
-  printf("\n");  //new line
-  printf("Bias of gyro: ");
-  printf("x=%6.3f, ", double(estGyroBias.x));
-  printf("y=%6.3f, ", double(estGyroBias.y));
-  printf("z=%6.3f, ", double(estGyroBias.z));
-  printf("\n");  //new line
-  printf("Corrected gyro: ");
-  printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.x - estGyroBias.x));
-  printf("y=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.y - estGyroBias.y));
-  printf("z=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.z - estGyroBias.z));
-  printf("\n");  //new line
 
-  printf("Estimated angles: ");
-  printf("Roll=%6.3f, ", double(estRoll));
-  printf("Pitch=%6.3f, ", double(estPitch));
-  printf("Yaw=%6.3f, ", double(estYaw));
-  printf("\n");  //new line
+  if (!sensorCalibration.isFinished())
+  {
+    printf("================================================");
+    printf("\n");
+    printf(">> Calibrating! Please Wait. Don't move the UAV.");
+    printf("\n");
+    printf("================================================");
+    printf("\n");
+  }
+  else
+  {
+    printf("Acc: ");
+    printf("x=%6.3f, ",
+           double(lastMainLoopInputs.imuMeasurement.accelerometer.x));
+    printf("\n");
+    printf("================================================");
+    printf("\n");
+    printf("Gyro: ");
+    printf("x=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.x));
+    printf("\n");
+    printf("y=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.y));
+    printf("\n");
+    printf("z=%6.3f, ", double(lastMainLoopInputs.imuMeasurement.rateGyro.z));
+    printf("\n");
+    printf("================================================");
+    printf("\n");
+    printf("GyroCalibrated: ");
+    printf("\n");
+    const auto gyroCalibrated = lastMainLoopInputs.imuMeasurement.rateGyro - sensorCalibration.getRateGyroOffset();
+    printf("rollRateCalibrated=%6.3f, ", double(gyroCalibrated.x));
+    printf("\n");
+    printf("pitchRateCalibrated=%6.3f, ", double(gyroCalibrated.y));
+    printf("\n");
+    printf("yawRateCalibrated=%6.3f, ", double(gyroCalibrated.z));
+    printf("\n");
+    printf("================================================");
+    printf("\n");
+    printf("AttitudeEstimation:");
+    printf("\n");
+    const auto eulerEst = stateEstimation.getAttitudeEst();
+    printf("rollEst=%6.3f, ", double(eulerEst.x));
+    printf("\n");
+    printf("pitchEst=%6.3f, ", double(eulerEst.y));
+    printf("\n");
+    printf("yawEst=%6.3f, ", double(eulerEst.z));
+    printf("\n");
+  }
 
-  printf("Example variable values:\n");
-  printf("  exampleVariable_int = %d\n", exampleVariable_int);
-  //printf("Current PWM command: %d\n", desiredPWM[currentPWMIndex]);
-  printf("Current Speed command: %d\n", UserInputState::desiredSpeed[UserInputState::currentSpeedIndex]);
-  //Note that it is somewhat annoying to print float variables.
-  //  We need to cast the variable as double, and we need to specify
-  //  the number of digits we want (if you used simply "%f", it would
-  //  truncate to an integer.
-  //  Here, we print 6 digits, with three digits after the period.
+  // Note that it is somewhat annoying to print float variables.
+  // We need to cast the variable as double, and we need to specify
+  // the number of digits we want (if you used simply "%f", it would
+  // truncate to an integer.
+  // Here, we print 6 digits, with three digits after the period.
   //printf("  exampleVariable_float = %6.3f\n", double(exampleVariable_float));
-
-  //We print the Vec3f by printing it's three components independently:
-  printf("  exampleVariable_Vec3f = (%6.3f, %6.3f, %6.3f)\n",
-         double(exampleVariable_Vec3f.x), double(exampleVariable_Vec3f.y),
-         double(exampleVariable_Vec3f.z));
-
   //just an example of how we would inspect the last main loop inputs and outputs:
   printf("Last main loop inputs:\n");
   printf("  batt voltage = %6.3f\n",

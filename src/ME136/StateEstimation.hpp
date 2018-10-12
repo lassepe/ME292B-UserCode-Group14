@@ -1,8 +1,8 @@
 #pragma once
 
 #include "MainLoopTypes.hpp"
-#include "UAVConstants.hpp"
 #include "SensorCalibration.hpp"
+#include "UAVConstants.hpp"
 #include "Vec3f.hpp"
 
 /**
@@ -19,10 +19,13 @@ class StateEstimation {
    * @param rhoAttitude the filter parameter for the attitude filter
    * @param a reference to the sensorCalibration module
    */
-  StateEstimation(const float rhoAttitude, const SensorCalibration& sensorCalibration)
+  StateEstimation(const float rhoAttitude,
+                  const SensorCalibration& sensorCalibration)
       : attitudeEst_(0, 0, 0),
         rhoAttitude_(rhoAttitude),
         sensorCalibration_(sensorCalibration) {}
+
+  void reset() { attitudeEst_ = Vec3f(0, 0, 0); }
   /**
    * @brief getAttitudeEst a getter for the estimated attitude (this is only
    * valid for small angles and accelerations)

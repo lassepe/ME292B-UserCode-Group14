@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tuple>
 #include "MainLoopTypes.hpp"
 
 enum class MotorID {
@@ -32,3 +33,15 @@ float speedFromForce(float desiredForce_N);
  * @param out the output to be modified by this function
  */
 void setMotorCommand(const MotorID motorID, const int pwmCommand, MainLoopOutput& out);
+
+/**
+ * @brief mixToMotorForces mixes the disired total force and the three desired torques to yield the three motor forces
+ *
+ * @param cSum the total force desired
+ * @param n1 the torque around axis the B-1-axis
+ * @param n2 the torque around axis the B-2-axis
+ * @param n3 the torque around axis the B-3-axis
+ *
+ * @return a tuple of the resulting motor forces c1, c2, c3, c4
+ */
+std::tuple<float, float, float, float> mixToMotorForces(const float cSum, const float n1, const float n2, const float n3);

@@ -87,8 +87,18 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
   // if the calibration is still running we have to return early
   if (!sensorCalibration.run(in)) {
     // only do things if the calibration is finished.
-    stateEstimation.update(in, UAVConstants::dt);
+    stateEstimation.update(in, Constants::UAV::dt);
   }
+
+  // some desired values:
+  const float cSum = 0;
+  const float n1 = 0;
+  const float n2 = 0;
+  const float n3 = 0;
+
+  // just for testing
+  float c1, c2, c3, c4;
+  std::tie(c1, c2, c3, c4) = mixToMotorForces(cSum, n1, n2, n3);
 
   // get the current attitude estimate to send it via telemetry
   const auto eulerEst = stateEstimation.getAttitudeEst();

@@ -64,8 +64,8 @@ class StateEstimation {
   void updateAttitudeEst(const Vec3f& rateGyroMeasCorrected,
                          const Vec3f& accMeas, const float dt) {
     // create hte measurements for roll and pitch
-    const float rollMeas = accMeas.y / UAVConstants::gravity;
-    const float pitchMeas = -accMeas.x / UAVConstants::gravity;
+    const float rollMeas = accMeas.y / Constants::World::gravity;
+    const float pitchMeas = -accMeas.x / Constants::World::gravity;
 
     // for the roll and the pitch angle we can use the accelormeter to correct
     // the prediction

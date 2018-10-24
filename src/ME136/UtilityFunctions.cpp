@@ -1,4 +1,5 @@
 #include "UtilityFunctions.hpp"
+#include "UAVConstants.hpp"
 
 int pwmCommandFromSpeed(float desiredSpeed_rad_per_sec) {
   // the slope of the speedToPWM map
@@ -8,7 +9,6 @@ int pwmCommandFromSpeed(float desiredSpeed_rad_per_sec) {
 
   return int(b + m * desiredSpeed_rad_per_sec);
 }
-
 
 float speedFromForce(float desiredForce_N) {
   // replace this with your determined constant:
@@ -50,4 +50,21 @@ void setMotorCommand(const MotorID motorID, const int pwmCommand, MainLoopOutput
     default:
       break;
   }
+}
+
+std::tuple<float, float, float, float> mixToMotorForces(const float cSum, const float n1, const float n2, const float n3)
+{
+  // some precomputations for readability and to safe some computation time:
+  const float lInv = 1 / Constants::UAV::propOrthDist;
+  const float kInv = 1 / Constants::UAV::kappa;
+
+  // formulating the mixer matrix as presented in the lecture as separate equations:
+  // force of motor 1
+  const float c1 = 0.25f * (1 +lInv*n1 -lInv*n2 +kInv*n3);
+  const float c2 = 0.25f * (1 -lInv*n1 -lInv*n2 -kInv*n3);
+  const float c3 = 0.25f * (1 -lInv*n1 +lInv*n2 +kInv*n3);
+  const float c4 = 0.25f * (1 +lInv*n1 +lInv*n2 -kInv*n3);
+
+  // stack the whole stuff to one tuple to return all in once
+  return std::tuple<float, float, float, float>(c1, c2, c3, c4);
 }

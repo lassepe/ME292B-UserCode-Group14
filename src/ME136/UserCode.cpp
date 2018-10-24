@@ -90,14 +90,36 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
     stateEstimation.update(in, Constants::UAV::dt);
   }
 
-  float w1 = 0;
-  float w2 = 0;
-  float w3 = 5;
+  const auto eulerEst = stateEstimation.getAttitudeEst();
 
-  float desiredThrust = 8.0f*Constants::UAV::mass;
-  float n1 = w1*Constants::UAV::inertia_xx;
-  float n2 = w2*Constants::UAV::inertia_yy;
-  float n3 = w3*Constants::UAV::inertia_zz;
+  const auto gyroCalibrated = lastMainLoopInputs.imuMeasurement.rateGyro -
+                              sensorCalibration.getRateGyroOffset();
+
+  Vec3f desAng={0,0,0};
+
+  if(in.joystickInput.buttonBlue){
+    desAng.y=0.5236f;
+  }
+
+
+  Vec3f cmdAngVel;
+
+  cmdAngVel.x = -(eulerEst.x-desAng.x)/Constants::Control::timeConstant_rollAngle;
+  cmdAngVel.y = -(eulerEst.y-desAng.y)/Constants::Control::timeConstant_pitchAngle;
+  cmdAngVel.z = -(eulerEst.z-desAng.z)/Constants::Control::timeConstant_yawAngle;
+
+  //Inner control loop
+  Vec3f cmdAngAcc;
+
+  const float cmdNormThrust=8.0f;
+  cmdAngAcc.x=-(gyroCalibrated.x-cmdAngVel.x)/Constants::Control::timeConstant_rollRate;
+  cmdAngAcc.y=-(gyroCalibrated.y-cmdAngVel.y)/Constants::Control::timeConstant_pitchRate;
+  cmdAngAcc.z=-(gyroCalibrated.z-cmdAngVel.z)/Constants::Control::timeConstant_yawRate;
+
+  float desiredThrust = cmdNormThrust*Constants::UAV::mass;
+  float n1 = cmdAngAcc.x*Constants::UAV::inertia_xx;
+  float n2 = cmdAngAcc.y*Constants::UAV::inertia_yy;
+  float n3 = cmdAngAcc.z*Constants::UAV::inertia_zz;
 
   float c1, c2, c3, c4;
   std::tie(c1, c2, c3, c4) = mixToMotorForces(desiredThrust, n1, n2, n3);
@@ -109,16 +131,26 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
 
 
   // get the current attitude estimate to send it via telemetry
-  const auto eulerEst = stateEstimation.getAttitudeEst();
+
   out.telemetryOutputs_plusMinus100[0] = eulerEst.x;
   out.telemetryOutputs_plusMinus100[1] = eulerEst.y;
   out.telemetryOutputs_plusMinus100[2] = eulerEst.z;
 
-  const auto gyroCalibrated = lastMainLoopInputs.imuMeasurement.rateGyro -
-                              sensorCalibration.getRateGyroOffset();
-  out.telemetryOutputs_plusMinus100[3] = gyroCalibrated.x;
-  out.telemetryOutputs_plusMinus100[4] = gyroCalibrated.y;
-  out.telemetryOutputs_plusMinus100[5] = gyroCalibrated.z;
+  //out.telemetryOutputs_plusMinus100[3] = gyroCalibrated.x;
+  //out.telemetryOutputs_plusMinus100[4] = gyroCalibrated.y;
+  //out.telemetryOutputs_plusMinus100[5] = gyroCalibrated.z;
+
+  out.telemetryOutputs_plusMinus100[3] = cmdAngVel.x;
+  out.telemetryOutputs_plusMinus100[4] = cmdAngVel.y;
+  out.telemetryOutputs_plusMinus100[5] = cmdAngVel.z;
+
+  out.telemetryOutputs_plusMinus100[6] = cmdAngAcc.x;
+  out.telemetryOutputs_plusMinus100[7] = cmdAngAcc.y;
+  out.telemetryOutputs_plusMinus100[8] = cmdAngAcc.z;
+
+  out.telemetryOutputs_plusMinus100[9] = desAng.y;
+  out.telemetryOutputs_plusMinus100[10] = gyroCalibrated.y;
+
   // copy the inputs and outputs for printing
   lastMainLoopInputs = in;
   lastMainLoopOutputs = out;
@@ -207,4 +239,5 @@ void PrintStatus() {
   printf("Last main loop outputs:\n");
   printf("  motor command 1 = %6.3f\n",
          double(lastMainLoopOutputs.motorCommand1));
+  printf("timeConstant_pitchAngle:%6.3f",double(Constants::Control::timeConstant_pitchAngle));
 }

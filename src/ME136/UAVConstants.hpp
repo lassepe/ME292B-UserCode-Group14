@@ -12,6 +12,17 @@ namespace Constants {
     const float dt = 1.0f / 500.0f; //[s] period between successive calls to MainLoop
   };
 
+  namespace Control {
+    //Gyro rates
+    const float timeConstant_rollRate = 0.04f;
+    const float timeConstant_pitchRate = timeConstant_rollRate;
+    const float timeConstant_yawRate = 0.5f;
+    //Angles
+    const float timeConstant_rollAngle = 0.4f;
+    const float timeConstant_pitchAngle = timeConstant_rollAngle;
+    const float timeConstant_yawAngle = 1.0f;
+  };
+
   namespace World {
     const float gravity = 9.81f;  // acceleration of gravity [m/s^2]
   };

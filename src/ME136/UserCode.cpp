@@ -90,15 +90,23 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
     stateEstimation.update(in, Constants::UAV::dt);
   }
 
-  // some desired values:
-  const float cSum = 0;
-  const float n1 = 0;
-  const float n2 = 0;
-  const float n3 = 0;
+  float w1 = 0;
+  float w2 = 0;
+  float w3 = 5;
 
-  // just for testing
+  float desiredThrust = 8.0f*Constants::UAV::mass;
+  float n1 = w1*Constants::UAV::inertia_xx;
+  float n2 = w2*Constants::UAV::inertia_yy;
+  float n3 = w3*Constants::UAV::inertia_zz;
+
   float c1, c2, c3, c4;
-  std::tie(c1, c2, c3, c4) = mixToMotorForces(cSum, n1, n2, n3);
+  std::tie(c1, c2, c3, c4) = mixToMotorForces(desiredThrust, n1, n2, n3);
+
+  setMotorCommand(MotorID(1), pwmFromForce(c1), out);
+  setMotorCommand(MotorID(2), pwmFromForce(c2), out);
+  setMotorCommand(MotorID(3), pwmFromForce(c3), out);
+  setMotorCommand(MotorID(4), pwmFromForce(c4), out);
+
 
   // get the current attitude estimate to send it via telemetry
   const auto eulerEst = stateEstimation.getAttitudeEst();

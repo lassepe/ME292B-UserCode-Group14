@@ -25,6 +25,8 @@ int pwmCommandFromSpeed(float desiredSpeed_rad_per_sec);
 //! Maps from a desired force [N] to a command speed [rad/s]
 float speedFromForce(float desiredForce_N);
 
+int pwmFromForce(float desiredForce_N);
+
 /**
  * @brief setMotorCommand sets the motor command for selected motors
  *

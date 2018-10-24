@@ -14,7 +14,7 @@ float speedFromForce(float desiredForce_N) {
   // replace this with your determined constant:
   // Remember to add the trailing "f" for single
   // precision!
-  float const propConstant = 1.585e-8f;
+  float const propConstant = 1.9165e-8f;
 
   //we implement a safety check,
   //  (no sqrtf for negative numbers)
@@ -24,6 +24,11 @@ float speedFromForce(float desiredForce_N) {
 
   return sqrtf(desiredForce_N / propConstant);
 }
+
+int pwmFromForce(float desiredForce_N) {
+  return pwmCommandFromSpeed(speedFromForce(desiredForce_N));
+}
+
 
 void setMotorCommand(const MotorID motorID, const int pwmCommand, MainLoopOutput& out)
 {
@@ -60,10 +65,10 @@ std::tuple<float, float, float, float> mixToMotorForces(const float cSum, const 
 
   // formulating the mixer matrix as presented in the lecture as separate equations:
   // force of motor 1
-  const float c1 = 0.25f * (1 +lInv*n1 -lInv*n2 +kInv*n3);
-  const float c2 = 0.25f * (1 -lInv*n1 -lInv*n2 -kInv*n3);
-  const float c3 = 0.25f * (1 -lInv*n1 +lInv*n2 +kInv*n3);
-  const float c4 = 0.25f * (1 +lInv*n1 +lInv*n2 -kInv*n3);
+  const float c1 = 0.25f * (1*cSum +lInv*n1 -lInv*n2 +kInv*n3);
+  const float c2 = 0.25f * (1*cSum -lInv*n1 -lInv*n2 -kInv*n3);
+  const float c3 = 0.25f * (1*cSum -lInv*n1 +lInv*n2 +kInv*n3);
+  const float c4 = 0.25f * (1*cSum +lInv*n1 +lInv*n2 -kInv*n3);
 
   // stack the whole stuff to one tuple to return all in once
   return std::tuple<float, float, float, float>(c1, c2, c3, c4);

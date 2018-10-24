@@ -52,7 +52,7 @@ class StateEstimation {
   /// the current estimate of the filter for te attitue
   Vec3f attitudeEst_ = Vec3f(0, 0, 0);
   /// the filter parameter for the rate gyro
-  const float rhoAttitude_ = 0.1f;
+  const float rhoAttitude_ = 0.01f;
   /// a reference to the rate gyro offset (for sensorCalibration)
   const SensorCalibration& sensorCalibration_;
 

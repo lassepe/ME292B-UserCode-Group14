@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include "MainLoopTypes.hpp"
 #include "SensorCalibration.hpp"
 #include "UAVConstants.hpp"
@@ -19,13 +21,17 @@ class StateEstimation {
    * @param rhoAttitude the filter parameter for the attitude filter
    * @param a reference to the sensorCalibration module
    */
-  StateEstimation(const float rhoAttitude,
+  StateEstimation(const float rhoHeight,
+                  const float rhoAttitude,
                   const SensorCalibration& sensorCalibration)
-      : attitudeEst_(0, 0, 0),
+      : rhoHeight_(rhoHeight),
         rhoAttitude_(rhoAttitude),
         sensorCalibration_(sensorCalibration) {}
 
-  void reset() { attitudeEst_ = Vec3f(0, 0, 0); }
+  void reset() {
+    attitudeEst_ = Vec3f(0, 0, 0);
+    heightEst_ = 0.f;
+  }
   /**
    * @brief getAttitudeEst a getter for the estimated attitude (this is only
    * valid for small angles and accelerations)
@@ -33,6 +39,8 @@ class StateEstimation {
    * angles.
    */
   const Vec3f& getAttitudeEst() const { return attitudeEst_; }
+
+  float getHeightEst() const { return heightEst_; }
 
   /**
    * @brief updates the estimator with the current measurements
@@ -46,11 +54,16 @@ class StateEstimation {
     // update the attitude estimator
     updateAttitudeEst(rateGyroMeasCorrected, in.imuMeasurement.accelerometer,
                       dt);
+    // update the estimate of the height considering the roll and pitch angle
+    updateHeightEst(in.heightSensor.value);
   }
 
  private:
+  float heightEst_= 0.f;
   /// the current estimate of the filter for te attitue
   Vec3f attitudeEst_ = Vec3f(0, 0, 0);
+
+  const float rhoHeight_ = 0.01f;
   /// the filter parameter for the rate gyro
   const float rhoAttitude_ = 0.01f;
   /// a reference to the rate gyro offset (for sensorCalibration)
@@ -79,5 +92,10 @@ class StateEstimation {
     // is the best guess that we have until we can get other measurements to
     // correct yaw (e.g. visual reference or compass))
     attitudeEst_.z += rateGyroMeasCorrected.z * dt;
+  }
+
+  void updateHeightEst(const float heightMeas) {
+    const float heightProjectionFactor = std::cos(attitudeEst_.x) * std::cos(attitudeEst_.y);
+    heightEst_ = (1 - rhoHeight_) * heightEst_ + rhoHeight_ * heightMeas * heightProjectionFactor;
   }
 };

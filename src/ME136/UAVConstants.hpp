@@ -12,7 +12,15 @@ namespace Constants {
     const float dt = 1.0f / 500.0f; //[s] period between successive calls to MainLoop
   };
 
+  namespace Estimator {
+    const float rhoHeightEst = 0.001f;
+    const float rhoAttitudeEst = 0.01f;
+  };
+
   namespace Control {
+    // height control
+    const float timeConstant_height = 5.0f;
+
     //Gyro rates
     const float timeConstant_rollRate = 0.04f;
     const float timeConstant_pitchRate = timeConstant_rollRate;

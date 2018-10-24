@@ -30,7 +30,7 @@ SensorCalibration sensorCalibration = SensorCalibration(500);
 // the state estimation module of the system, handling the estimation of the
 // current state. This needs to be created AFTER the calibration at it makes
 // use of the calibrated offsets.
-StateEstimation stateEstimation = StateEstimation(0.01, sensorCalibration);
+StateEstimation stateEstimation = StateEstimation(Constants::Estimator::rhoHeightEst, Constants::Estimator::rhoAttitudeEst, sensorCalibration);
 
 void updateInputState(const MainLoopInput& in) {
   // if the reset button was pressed before we can set a new value
@@ -96,11 +96,14 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
                               sensorCalibration.getRateGyroOffset();
 
   Vec3f desAng={0,0,0};
+  float desHeight = 0;
 
-  if(in.joystickInput.buttonBlue){
-    desAng.y=0.5236f;
+  if(in.joystickInput.buttonBlue) {
+    desHeight = 0.3f;
   }
 
+  const float equilibriumThrust = Constants::UAV::mass * Constants::World::gravity;
+  const float desiredThrust = equilibriumThrust - (stateEstimation.getHeightEst() - desHeight)/Constants::Control::timeConstant_height;
 
   Vec3f cmdAngVel;
 
@@ -111,12 +114,10 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
   //Inner control loop
   Vec3f cmdAngAcc;
 
-  const float cmdNormThrust=8.0f;
   cmdAngAcc.x=-(gyroCalibrated.x-cmdAngVel.x)/Constants::Control::timeConstant_rollRate;
   cmdAngAcc.y=-(gyroCalibrated.y-cmdAngVel.y)/Constants::Control::timeConstant_pitchRate;
   cmdAngAcc.z=-(gyroCalibrated.z-cmdAngVel.z)/Constants::Control::timeConstant_yawRate;
 
-  float desiredThrust = cmdNormThrust*Constants::UAV::mass;
   float n1 = cmdAngAcc.x*Constants::UAV::inertia_xx;
   float n2 = cmdAngAcc.y*Constants::UAV::inertia_yy;
   float n3 = cmdAngAcc.z*Constants::UAV::inertia_zz;
@@ -239,5 +240,6 @@ void PrintStatus() {
   printf("Last main loop outputs:\n");
   printf("  motor command 1 = %6.3f\n",
          double(lastMainLoopOutputs.motorCommand1));
-  printf("timeConstant_pitchAngle:%6.3f",double(Constants::Control::timeConstant_pitchAngle));
+  printf("timeConstant_pitchAngle:%6.3f\n",double(Constants::Control::timeConstant_pitchAngle));
+  printf("heightEst:%6.3f\n",double(stateEstimation.getHeightEst()));
 }

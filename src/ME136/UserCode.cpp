@@ -1,6 +1,9 @@
 #include "UserCode.hpp"
+#include "UserInputHandler.hpp"
 #include "SensorCalibration.hpp"
 #include "StateEstimation.hpp"
+#include "Controller.hpp"
+#include "TelemetryLoggingInterface.hpp"
 #include "UAVConstants.hpp"
 #include "Vec3f.hpp"
 
@@ -10,20 +13,6 @@
 MainLoopInput lastMainLoopInputs;
 MainLoopOutput lastMainLoopOutputs;
 
-// a namespace to wrap the scope of some state variables
-namespace UserInputState {
-// Some state to cycle through the different PWM values
-int currentPWMIndex = 0;
-// Some state to cycle through the different speed values
-int currentSpeedIndex = 0;
-// state to figure out which button was used
-bool resetButtonWasPressed = false;
-// the pwm values the user can select from
-const int desiredPWM[6] = {40, 80, 120, 160, 200, 240};
-// the speed values the user can select from
-const int desiredSpeed[4] = {1000, 1200, 1400, 1600};
-};  // namespace UserInputState
-
 // the calibration module of the system, handling the calibration of the
 // sensors (for details see documentation within the class)
 SensorCalibration sensorCalibration = SensorCalibration(500);
@@ -31,53 +20,19 @@ SensorCalibration sensorCalibration = SensorCalibration(500);
 // current state. This needs to be created AFTER the calibration at it makes
 // use of the calibrated offsets.
 StateEstimation stateEstimation = StateEstimation(0.01, sensorCalibration);
-
-void updateInputState(const MainLoopInput& in) {
-  // if the reset button was pressed before we can set a new value
-  if (in.joystickInput.buttonGreen) {
-    // green is our reset button which has to be pressed before we can
-    // increment
-    UserInputState::resetButtonWasPressed = true;
-  } else if (UserInputState::resetButtonWasPressed &&
-             in.joystickInput.buttonYellow) {
-    UserInputState::currentPWMIndex++;
-    UserInputState::currentSpeedIndex++;
-    // wrap around
-    UserInputState::currentPWMIndex %= 6;
-    UserInputState::currentSpeedIndex %= 4;
-    UserInputState::resetButtonWasPressed = false;
-  }
-}
-
-const MainLoopOutput userSetDesiredSpeed(const MainLoopInput& in,
-                                         const MotorID motorID) {
-  MainLoopOutput out;
-  // cycling through the different rpm values
-  if (in.joystickInput.buttonBlue) {
-    const int pwmCommand = pwmCommandFromSpeed(
-        UserInputState::desiredSpeed[UserInputState::currentSpeedIndex]);
-    setMotorCommand(motorID, pwmCommand, out);
-  }
-  return out;
-}
-
-const MainLoopOutput userSetDesiredPWMCommand(const MainLoopInput& in,
-                                              const MotorID motorID) {
-  MainLoopOutput out;
-  // only set the value of the blue button is pressed
-  if (in.joystickInput.buttonBlue) {
-    // select the desired pwm signal
-    const int pwmCommand =
-        UserInputState::desiredPWM[UserInputState::currentPWMIndex];
-    // set the desired speed for the motors as specified
-    setMotorCommand(motorID, pwmCommand, out);
-  }
-  return out;
-}
+// the Controller computes thrust forces at every time step. The controller
+// takes a constant reference to the calibration and to the state estimation to
+// have access to corrected measurement and the whole estimated state
+Controller controller = Controller(sensorCalibration, stateEstimation);
+// some space to store the last channel info (needed for priting)
+std::vector<const char*> lastChannelInfo;
 
 MainLoopOutput MainLoop(MainLoopInput const& in) {
   // the main loop out
   MainLoopOutput out;
+  // a logger to conveniently add telemtry logs to out
+  auto logger = TelemetryLoggingInterface(12, out);
+
   if (in.joystickInput.buttonStart) {
     // if someone hit the start button we reset the calibration and the state
     // estimation
@@ -90,68 +45,17 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
     stateEstimation.update(in, Constants::UAV::dt);
   }
 
-  const auto eulerEst = stateEstimation.getAttitudeEst();
-
-  const auto gyroCalibrated = lastMainLoopInputs.imuMeasurement.rateGyro -
-                              sensorCalibration.getRateGyroOffset();
-
-  Vec3f desAng={0,0,0};
-
-  if(in.joystickInput.buttonBlue){
-    desAng.y=0.5236f;
-  }
-
-
-  Vec3f cmdAngVel;
-
-  cmdAngVel.x = -(eulerEst.x-desAng.x)/Constants::Control::timeConstant_rollAngle;
-  cmdAngVel.y = -(eulerEst.y-desAng.y)/Constants::Control::timeConstant_pitchAngle;
-  cmdAngVel.z = -(eulerEst.z-desAng.z)/Constants::Control::timeConstant_yawAngle;
-
-  //Inner control loop
-  Vec3f cmdAngAcc;
-
-  const float cmdNormThrust=8.0f;
-  cmdAngAcc.x=-(gyroCalibrated.x-cmdAngVel.x)/Constants::Control::timeConstant_rollRate;
-  cmdAngAcc.y=-(gyroCalibrated.y-cmdAngVel.y)/Constants::Control::timeConstant_pitchRate;
-  cmdAngAcc.z=-(gyroCalibrated.z-cmdAngVel.z)/Constants::Control::timeConstant_yawRate;
-
-  float desiredThrust = cmdNormThrust*Constants::UAV::mass;
-  float n1 = cmdAngAcc.x*Constants::UAV::inertia_xx;
-  float n2 = cmdAngAcc.y*Constants::UAV::inertia_yy;
-  float n3 = cmdAngAcc.z*Constants::UAV::inertia_zz;
-
+  // compute the 4 motor torques from the control policy
   float c1, c2, c3, c4;
-  std::tie(c1, c2, c3, c4) = mixToMotorForces(desiredThrust, n1, n2, n3);
-
+  std::tie(c1, c2, c3, c4) = controller.control(in, logger);
+  // finally set the torques
   setMotorCommand(MotorID(1), pwmFromForce(c1), out);
   setMotorCommand(MotorID(2), pwmFromForce(c2), out);
   setMotorCommand(MotorID(3), pwmFromForce(c3), out);
   setMotorCommand(MotorID(4), pwmFromForce(c4), out);
 
-
-  // get the current attitude estimate to send it via telemetry
-
-  out.telemetryOutputs_plusMinus100[0] = eulerEst.x;
-  out.telemetryOutputs_plusMinus100[1] = eulerEst.y;
-  out.telemetryOutputs_plusMinus100[2] = eulerEst.z;
-
-  //out.telemetryOutputs_plusMinus100[3] = gyroCalibrated.x;
-  //out.telemetryOutputs_plusMinus100[4] = gyroCalibrated.y;
-  //out.telemetryOutputs_plusMinus100[5] = gyroCalibrated.z;
-
-  out.telemetryOutputs_plusMinus100[3] = cmdAngVel.x;
-  out.telemetryOutputs_plusMinus100[4] = cmdAngVel.y;
-  out.telemetryOutputs_plusMinus100[5] = cmdAngVel.z;
-
-  out.telemetryOutputs_plusMinus100[6] = cmdAngAcc.x;
-  out.telemetryOutputs_plusMinus100[7] = cmdAngAcc.y;
-  out.telemetryOutputs_plusMinus100[8] = cmdAngAcc.z;
-
-  out.telemetryOutputs_plusMinus100[9] = desAng.y;
-  out.telemetryOutputs_plusMinus100[10] = gyroCalibrated.y;
-
   // copy the inputs and outputs for printing
+  lastChannelInfo = logger.getChannelInfo();
   lastMainLoopInputs = in;
   lastMainLoopOutputs = out;
   return out;
@@ -214,6 +118,21 @@ void PrintStatus() {
     printf("pitchEst=%6.3f, ", double(eulerEst.y));
     printf("\n");
     printf("yawEst=%6.3f, ", double(eulerEst.z));
+    printf("\n");
+    printf("================================================");
+    printf("\n");
+    printf("Telemetry Channel Info");
+    printf("\n");
+    int i = 0;
+    for (auto info : lastChannelInfo)
+    {
+      printf("Channel %d: ", (i));
+      printf(info);
+      printf(" = %6.3f", double(lastMainLoopOutputs.telemetryOutputs_plusMinus100[i]));
+      printf("\n");
+      i++;
+    }
+    printf("================================================");
     printf("\n");
   }
 

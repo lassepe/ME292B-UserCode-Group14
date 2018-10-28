@@ -35,7 +35,15 @@ int pwmFromForce(float desiredForce_N);
  * @param out the output to be modified by this function
  */
 void setMotorCommand(const MotorID motorID, const int pwmCommand, MainLoopOutput& out);
-
+/**
+ * @brief mixToMotorForces mixes the disired total force and the three desired torques to yield the three motor forces
+ *
+ * @param cSum the total force desired
+ * @param n the torques around all three axis
+ *
+ * @return a tuple of the resulting motor forces c1, c2, c3, c4
+ */
+std::tuple<float, float, float, float> mixToMotorForces(const float cSum, const Vec3f& n);
 /**
  * @brief mixToMotorForces mixes the disired total force and the three desired torques to yield the three motor forces
  *

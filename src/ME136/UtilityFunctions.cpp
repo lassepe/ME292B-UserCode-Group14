@@ -57,6 +57,12 @@ void setMotorCommand(const MotorID motorID, const int pwmCommand, MainLoopOutput
   }
 }
 
+std::tuple<float, float, float, float> mixToMotorForces(const float cSum, const Vec3f& n)
+{
+  // simply call the function below. This is just a convenience wrapper.
+  return mixToMotorForces(cSum, n.x, n.y, n.z);
+}
+
 std::tuple<float, float, float, float> mixToMotorForces(const float cSum, const float n1, const float n2, const float n3)
 {
   // some precomputations for readability and to safe some computation time:

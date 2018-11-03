@@ -40,7 +40,7 @@ class Controller {
 
     // for now there is no deticated total thrust control but rather we only
     // set a constant value needed to nearly hover the quad
-    const float cmdNormThrust = 8.0f;
+    const float cmdNormThrust = 2.0f;
     float desiredThrust = cmdNormThrust * Constants::UAV::mass;
     // combine the commanded total thrust and desired motor torques and mix
     // them to the resulting thrusts per motor
@@ -104,7 +104,7 @@ class Controller {
     float n3 = cmdAngAcc.z * Constants::UAV::inertia_zz;
 
     // log the data for plotting
-    logger.log(gyroCalibrated.x, "gyroCalibrated.x");
+    logger.log(gyroCalibrated.y, "gyroCalibrated.y");
     logger.log(cmdAngAcc, "cmdAngAcc");
 
     return Vec3f(n1, n2, n3);

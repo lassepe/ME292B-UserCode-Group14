@@ -16,11 +16,11 @@ namespace Constants {
     //Gyro rates
     const float timeConstant_rollRate = 0.04f;
     const float timeConstant_pitchRate = timeConstant_rollRate;
-    const float timeConstant_yawRate = 0.5f;
+    const float timeConstant_yawRate = 0.1f;
     //Angles
-    const float timeConstant_rollAngle = 0.4f;
+    const float timeConstant_rollAngle = 0.12f;
     const float timeConstant_pitchAngle = timeConstant_rollAngle;
-    const float timeConstant_yawAngle = 1.0f;
+    const float timeConstant_yawAngle = 0.2f;
   };
 
   namespace World {

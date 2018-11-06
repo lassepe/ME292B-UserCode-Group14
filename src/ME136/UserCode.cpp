@@ -121,6 +121,12 @@ void PrintStatus() {
     printf("\n");
     printf("================================================");
     printf("\n");
+    printf("Last_range_=_%6.3fm,_", \
+           double(lastMainLoopInputs.heightSensor.value));
+    printf("Last_flow:_x=%6.3,_y=%6.3f\n", \
+           double(lastMainLoopInputs.opticalFlowSensor.value_x), \
+           double(lastMainLoopInputs.opticalFlowSensor.value_y));
+    printf("\n");
     printf("Telemetry Channel Info");
     printf("\n");
     int i = 0;

@@ -46,6 +46,12 @@ class StateEstimation {
   const Vec3f& getAttitudeEst() const { return attitudeEst_; }
 
   /**
+   * @brief getVelocityEst a getter for the estimated velocity
+   * @return the current estimate for the velocity
+   */
+  const Vec3f& getVelocityEst() const { return velocityEst_; }
+
+  /**
    * @brief updates the estimator with the current measurements
    * @param in the intput that contains all the measurements
    * @param dt the temporal difference to the last update

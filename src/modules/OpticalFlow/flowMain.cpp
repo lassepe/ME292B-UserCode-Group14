@@ -1,7 +1,8 @@
 /****************************************************************************
  *
  *   Copyright (c) 2012-2016 PX4 Development Team. All rights reserved.
- *   (c) 2017 Muellerlab
+ *   (c) 2017 Hiperlab
+ *   (c) 2018 Hiperlab
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +46,7 @@
 
 #include <systemlib/systemlib.h>
 #include <systemlib/err.h>
+#include <systemlib/perf_counter.h>
 
 #include <uORB/uORB.h>
 #include <uORB/topics/optical_flow_report.h>
@@ -56,7 +58,8 @@
 extern "C" __EXPORT int flow_main(int argc, char *argv[]);
 
 static bool volatile thread_should_exit = false;
-static bool volatile thread_running = false;
+static bool volatile thread_running_flow = false;
+static bool volatile thread_running_ranger = false;
 static int volatile daemon_task;
 
 //UORB STUFF
@@ -65,10 +68,14 @@ orb_advert_t pub_fd_flowReport = 0;
 struct range_sensor_report_s rangeReport;
 orb_advert_t pub_fd_rangeReport = 0;
 
-int flow_thread_main(int argc, char *argv[]);
+int flow_thread_main_flow(int argc, char *argv[]);
+int flow_thread_main_ranging(int argc, char *argv[]);
 
 static FlowDeck flowdeck;
 static VL53L0X rangeSensor;
+
+perf_counter_t perf_timer_ranger;
+perf_counter_t perf_timer_flow;
 
 void flow_usage();
 
@@ -93,12 +100,13 @@ int flow_main(int argc, char *argv[]) {
   }
 
   if (!strcmp(argv[1], "status")) {
-    if (thread_running) {
+    if (thread_running_flow or thread_running_ranger) {
       printf("Loop counter = %d", loopCounter);
       flowdeck.PrintStatus();
       rangeSensor.PrintStatus();
       printf("\n\n");
     } else {
+      thread_should_exit = true;
       warnx("\tnot started\n");
     }
 
@@ -107,7 +115,7 @@ int flow_main(int argc, char *argv[]) {
 
   if (!strcmp(argv[1], "start")) {
 
-    if (thread_running) {
+    if (thread_running_flow or thread_running_ranger) {
       warnx("daemon already running\n");
       /* this is not an error */
       return 0;
@@ -117,7 +125,12 @@ int flow_main(int argc, char *argv[]) {
     daemon_task = px4_task_spawn_cmd(
         "flow_loop", SCHED_DEFAULT,
         SCHED_PRIORITY_DEFAULT,
-        2000, flow_thread_main,
+        2000, flow_thread_main_flow,
+        (argv) ? (char * const *) &argv[2] : (char * const *) NULL);
+    daemon_task = px4_task_spawn_cmd(
+        "flow_loop", SCHED_DEFAULT,
+        SCHED_PRIORITY_DEFAULT,
+        2000, flow_thread_main_ranging,
         (argv) ? (char * const *) &argv[2] : (char * const *) NULL);
     return 0;
   }
@@ -126,8 +139,10 @@ int flow_main(int argc, char *argv[]) {
   return -1;
 }
 
-int flow_thread_main(int argc, char *argv[]) {
+int flow_thread_main_flow(int argc, char *argv[]) {
   bool success;
+
+  perf_timer_flow = perf_alloc(PC_ELAPSED, "flow_flow");
 
   success = flowdeck.Init();
   if (!success) {
@@ -135,16 +150,51 @@ int flow_thread_main(int argc, char *argv[]) {
     return -1;
   }
 
-  success = rangeSensor.Init();
-  if (!success) {
-    printf("Failed to init range sensor\n");
-    return -1;
-  }
-
   if (!pub_fd_flowReport) {
     memset(&flowReport, 0, sizeof(flowReport));
     pub_fd_flowReport = orb_advertise(ORB_ID(optical_flow_report), &flowReport);
     printf("Advertising uorb = %d\n", int(pub_fd_flowReport));
+  }
+
+  printf("### optical flow ###\n");
+
+  thread_running_flow = true;
+
+  for (;;) {
+    loopCounter++;
+    perf_begin(perf_timer_flow);
+    flowdeck.Loop();
+    perf_end(perf_timer_flow);
+
+    flowdeck.GetFlow(flowReport.flow_x, flowReport.flow_y);
+
+    int res1 = orb_publish(ORB_ID(optical_flow_report), pub_fd_flowReport,
+                           &flowReport);
+    if (res1 < 0) {
+      thread_should_exit = true;
+      printf("Error publishing to uorb = %d\n", res1);
+      continue;
+    }
+
+    usleep(1000);
+    if (thread_should_exit) {
+      break;
+    }
+
+  }
+  thread_running_flow = false;
+  return 0;
+}
+
+int flow_thread_main_ranging(int argc, char *argv[]) {
+  bool success;
+
+  perf_timer_ranger = perf_alloc(PC_ELAPSED, "flow_ranger");
+
+  success = rangeSensor.Init();
+  if (!success) {
+    printf("Failed to init range sensor\n");
+    return -1;
   }
 
   if (!pub_fd_rangeReport) {
@@ -156,24 +206,22 @@ int flow_thread_main(int argc, char *argv[]) {
 
   printf("### optical flow ###\n");
 
-  thread_running = true;
+  thread_running_ranger = true;
 
   for (;;) {
     loopCounter++;
-    flowdeck.Loop();
-    rangeSensor.Loop();
 
-    flowdeck.GetFlow(flowReport.flow_x, flowReport.flow_y);
+    perf_begin(perf_timer_ranger);
+    rangeSensor.Loop();
+    perf_end(perf_timer_ranger);
 
     rangeReport.range = rangeSensor.GetRange();
 
-    int res1 = orb_publish(ORB_ID(optical_flow_report), pub_fd_flowReport,
-                           &flowReport);
     int res2 = orb_publish(ORB_ID(range_sensor_report), pub_fd_rangeReport,
                            &rangeReport);
-    if (res1 < 0 or res2 < 0) {
-      thread_running = false;
-      printf("Error publishing to uorb = %d, %d\n", res1, res2);
+    if (res2 < 0) {
+      thread_should_exit = true;
+      printf("Error publishing to uorb = %d\n", res2);
       continue;
     }
 
@@ -183,6 +231,6 @@ int flow_thread_main(int argc, char *argv[]) {
     }
 
   }
-  thread_running = false;
+  thread_running_ranger = false;
   return 0;
 }

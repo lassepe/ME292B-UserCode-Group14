@@ -14,7 +14,7 @@ namespace Constants {
 
   namespace Control {
     //Gyro rates
-    const float timeConstant_rollRate = 0.04f;
+    const float timeConstant_rollRate = 0.02f;
     const float timeConstant_pitchRate = timeConstant_rollRate;
     const float timeConstant_yawRate = 0.1f;
     //Angles

@@ -34,15 +34,20 @@ class Controller {
     const auto velocityEst = stateEstimation_.getVelocityEst();
     const auto heightEst = stateEstimation_.getHeightEst();
     const auto attitudeEst = stateEstimation_.getAttitudeEst();
+    const auto poseEst = stateEstimation_.getPoseEst();
     // defining the set point
-    const float desHeight = 0.5f;
+    const float desHeight = 1.f;
     // naming some constants for shorter code
     const float wn = Constants::Control::natFreq_height;
     const float d = Constants::Control::dampRat_height;
 
+    Vec3f desVel = {0, 0, 0};
+    const float positionTimeConstant = 5.f;
+    desVel = -1 / positionTimeConstant * (poseEst);
+
     Vec3f desAcc = {0, 0, 0};
-    desAcc.x = -1 / Constants::Control::timeConstant_horizVel * velocityEst.x;
-    desAcc.y = -1 / Constants::Control::timeConstant_horizVel * velocityEst.y;
+    desAcc.x = -1 / Constants::Control::timeConstant_horizVel * (velocityEst.x  - desVel.x);
+    desAcc.y = -1 / Constants::Control::timeConstant_horizVel * (velocityEst.y - desVel.y);
     desAcc.z =
         -2.f * d * wn * velocityEst.z - wn * wn * (heightEst - desHeight);
     // for now we want to keep the angle of the quad always at 0

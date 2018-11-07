@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <tuple>
 
 #include "MainLoopTypes.hpp"
@@ -29,11 +30,21 @@ class Controller {
    */
   std::tuple<float, float, float, float> control(
       const MainLoopInput& in, TelemetryLoggingInterface& logger) {
-
+    // extracting the state estimate
     const auto velocityEst = stateEstimation_.getVelocityEst();
+    const auto heightEst = stateEstimation_.getHeightEst();
+    const auto attitudeEst = stateEstimation_.getAttitudeEst();
+    // defining the set point
+    const float desHeight = 0.5f;
+    // naming some constants for shorter code
+    const float wn = Constants::Control::natFreq_height;
+    const float d = Constants::Control::dampRat_height;
+
     Vec3f desAcc = {0, 0, 0};
-    desAcc.x = - 1 / Constants::Control::timeConstant_horizVel * velocityEst.x;
-    desAcc.y = - 1 / Constants::Control::timeConstant_horizVel * velocityEst.y;
+    desAcc.x = -1 / Constants::Control::timeConstant_horizVel * velocityEst.x;
+    desAcc.y = -1 / Constants::Control::timeConstant_horizVel * velocityEst.y;
+    desAcc.z =
+        -2.f * d * wn * velocityEst.z - wn * wn * (heightEst - desHeight);
     // for now we want to keep the angle of the quad always at 0
     Vec3f desAng = {0, 0, 0};
     desAng.x = -desAcc.y / Constants::World::gravity;
@@ -45,12 +56,16 @@ class Controller {
 
     // for now there is no deticated total thrust control but rather we only
     // set a constant value needed to nearly hover the quad
-    const float cmdNormThrust = 8.0f;
-    float desiredThrust = cmdNormThrust * Constants::UAV::mass;
+    const float denom = cosf(attitudeEst.x) * cosf(attitudeEst.y);
+    const float cmdNormThrust =
+        denom > 0.001f ? (Constants::World::gravity + desAcc.z) / denom
+                       : 0.f * Constants::World::gravity;
+    const float desiredThrust = cmdNormThrust * Constants::UAV::mass;
 
     // send all the relevant telemetry data
     logger.log(desAng.x, "desAng.x");
     logger.log(desAng.y, "desAng.y");
+    logger.log(desiredThrust, "desiredThrust");
 
     // combine the commanded total thrust and desired motor torques and mix
     // them to the resulting thrusts per motor
@@ -69,7 +84,8 @@ class Controller {
     // extract the corrected measurements needed for control
     const auto eulerEst = stateEstimation_.getAttitudeEst();
 
-    // outer control loop: Figure out the angular velocity command to stay stable
+    // outer control loop: Figure out the angular velocity command to stay
+    // stable
     Vec3f cmdAngVel;
     cmdAngVel.x =
         -(eulerEst.x - desAng.x) / Constants::Control::timeConstant_rollAngle;

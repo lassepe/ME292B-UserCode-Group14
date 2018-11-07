@@ -51,6 +51,8 @@ class StateEstimation {
    */
   const Vec3f& getVelocityEst() const { return velocityEst_; }
 
+  float getHeightEst() const { return heightEst_; }
+
   /**
    * @brief updates the estimator with the current measurements
    * @param in the intput that contains all the measurements

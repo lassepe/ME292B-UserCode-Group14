@@ -160,8 +160,10 @@ class StateEstimation {
         const float vYMeas = (-sigma2 - rateGyroMeasCorrected.x) * deltaPredict;
 
         // update the estimates
-        velocityEst_.x = (1 - rhoHorizontalVel_) * velocityEst_.x + rhoHorizontalVel_ * vXMeas;
-        velocityEst_.y = (1 - rhoHorizontalVel_) * velocityEst_.y + rhoHorizontalVel_ * vYMeas;
+        velocityEst_.x = (1 - rhoHorizontalVel_) * velocityEst_.x +
+                         rhoHorizontalVel_ * vXMeas;
+        velocityEst_.y = (1 - rhoHorizontalVel_) * velocityEst_.y +
+                         rhoHorizontalVel_ * vYMeas;
       }
     }
   }

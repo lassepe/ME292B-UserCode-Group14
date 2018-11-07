@@ -29,12 +29,17 @@ class Controller {
    */
   std::tuple<float, float, float, float> control(
       const MainLoopInput& in, TelemetryLoggingInterface& logger) {
+
+    const auto velocityEst = stateEstimation_.getVelocityEst();
+    Vec3f desAcc = {0, 0, 0};
+    desAcc.x = - 1 / Constants::Control::timeConstant_horizVel * velocityEst.x;
+    desAcc.y = - 1 / Constants::Control::timeConstant_horizVel * velocityEst.y;
     // for now we want to keep the angle of the quad always at 0
     Vec3f desAng = {0, 0, 0};
-    // step in put experiment
-    if (in.joystickInput.buttonBlue) {
-      desAng.y = 0.5236f;
-    }
+    desAng.x = -desAcc.y / Constants::World::gravity;
+    desAng.y = desAcc.x / Constants::World::gravity;
+    desAng.z = 0.f;
+
     // controll the quad to a desired equilibrium attitude
     const Vec3f attitudeMotorTorques = controlAttitude(in, desAng, logger);
 
@@ -42,6 +47,11 @@ class Controller {
     // set a constant value needed to nearly hover the quad
     const float cmdNormThrust = 8.0f;
     float desiredThrust = cmdNormThrust * Constants::UAV::mass;
+
+    // send all the relevant telemetry data
+    logger.log(desAng.x, "desAng.x");
+    logger.log(desAng.y, "desAng.y");
+
     // combine the commanded total thrust and desired motor torques and mix
     // them to the resulting thrusts per motor
     return mixToMotorForces(desiredThrust, attitudeMotorTorques);

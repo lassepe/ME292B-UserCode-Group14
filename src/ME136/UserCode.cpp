@@ -19,7 +19,7 @@ SensorCalibration sensorCalibration = SensorCalibration(500);
 // the state estimation module of the system, handling the estimation of the
 // current state. This needs to be created AFTER the calibration at it makes
 // use of the calibrated offsets.
-StateEstimation stateEstimation = StateEstimation(0.01, sensorCalibration);
+StateEstimation stateEstimation = StateEstimation(0.01, 0.3f, sensorCalibration);
 // the Controller computes thrust forces at every time step. The controller
 // takes a constant reference to the calibration and to the state estimation to
 // have access to corrected measurement and the whole estimated state
@@ -42,7 +42,7 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
   // if the calibration is still running we have to return early
   if (!sensorCalibration.run(in)) {
     // only do things if the calibration is finished.
-    stateEstimation.update(in, Constants::UAV::dt, logger);
+    stateEstimation.update(in, logger);
   }
 
   // compute the 4 motor torques from the control policy

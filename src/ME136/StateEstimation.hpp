@@ -21,11 +21,13 @@ class StateEstimation {
    * @param rhoAttitude the filter parameter for the attitude filter
    * @param a reference to the sensorCalibration module
    */
-  StateEstimation(const float rhoAttitude, const float rhoHeight,
+  StateEstimation(const float rhoAttitude, const float rhoVertical,
+                  const float rhoHorizontalVel,
                   const SensorCalibration& sensorCalibration)
       : attitudeEst_(0, 0, 0),
         rhoAttitude_(rhoAttitude),
-        rhoHeight_(rhoHeight),
+        rhoVertical_(rhoVertical),
+        rhoHorizontalVel_(rhoHorizontalVel),
         sensorCalibration_(sensorCalibration) {}
 
   void reset() {
@@ -54,9 +56,13 @@ class StateEstimation {
         in.imuMeasurement.rateGyro - sensorCalibration_.getRateGyroOffset();
     // update the attitude estimator
     updateAttitudeEst(rateGyroMeasCorrected, in.imuMeasurement.accelerometer);
-    // update the translational estimator
+    // update the vertical translational estimator
     updateVerticalEst(in.heightSensor.value, in.heightSensor.updated,
                       in.currentTime);
+    // update the horizontal translational estimator
+    updateHorizontalEst(in.opticalFlowSensor.value_x,
+                        in.opticalFlowSensor.value_y,
+                        in.opticalFlowSensor.updated, rateGyroMeasCorrected);
 
     // log all the relevant estimates
     logger.log(attitudeEst_, "attitudeEst_");
@@ -73,9 +79,11 @@ class StateEstimation {
   /// the estiamted height of the quad
   float heightEst_ = 0.f;
   /// the filter gain for the height
-  const float rhoHeight_ = 0.3f;
+  const float rhoVertical_ = 0.3f;
   /// the estimated velocities in all 3 directions:
   Vec3f velocityEst_ = Vec3f(0.f, 0.f, 0.f);
+  /// the filter gain for the horizontal velocity
+  const float rhoHorizontalVel_ = 0.1f;
   /// states of the last cycle:
   // TODO: maybe use the difference to the last state not the last measurement
   float lastHeightMeas_ = 0.f;
@@ -123,7 +131,7 @@ class StateEstimation {
       const float heightMeas =
           heightSenseValue * cosf(attitudeEst_.x) * cosf(attitudeEst_.y);
       // update the height estimate
-      heightEst_ = (1 - rhoHeight_) * heightEst_ + rhoHeight_ * heightMeas;
+      heightEst_ = (1 - rhoVertical_) * heightEst_ + rhoVertical_ * heightMeas;
 
       // update the vectical velocity estimate
       // TODO: maybe use diff to height state here
@@ -131,12 +139,30 @@ class StateEstimation {
           (heightMeas - lastHeightMeas_) / (updateTime - lastHeightMeasTime_);
       // update the vertical velocity estimate
       // TODO: maybe use another filter constant here
-      velocityEst_.z =
-          (1 - rhoHeight_) * velocityEst_.z + rhoHeight_ * velocityVecticalMeas;
+      velocityEst_.z = (1 - rhoVertical_) * velocityEst_.z +
+                       rhoVertical_ * velocityVecticalMeas;
 
       // update the state to compute the finite difference in the next steps
       lastHeightMeas_ = heightMeas;
       lastHeightMeasTime_ = updateTime;
+    }
+  }
+
+  void updateHorizontalEst(const float sigma1, const float sigma2,
+                           const bool updated,
+                           const Vec3f& rateGyroMeasCorrected) {
+    if (updated) {
+      const float denom = cosf(attitudeEst_.x) * cosf(attitudeEst_.y);
+      if (denom > 0.5f) {
+        const float deltaPredict = heightEst_ / denom;
+        // creating the pseudo measurements
+        const float vXMeas = (-sigma1 + rateGyroMeasCorrected.y) * deltaPredict;
+        const float vYMeas = (-sigma2 - rateGyroMeasCorrected.x) * deltaPredict;
+
+        // update the estimates
+        velocityEst_.x = (1 - rhoHorizontalVel_) * velocityEst_.x + rhoHorizontalVel_ * vXMeas;
+        velocityEst_.y = (1 - rhoHorizontalVel_) * velocityEst_.y + rhoHorizontalVel_ * vYMeas;
+      }
     }
   }
 };

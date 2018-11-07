@@ -19,7 +19,7 @@ SensorCalibration sensorCalibration = SensorCalibration(500);
 // the state estimation module of the system, handling the estimation of the
 // current state. This needs to be created AFTER the calibration at it makes
 // use of the calibrated offsets.
-StateEstimation stateEstimation = StateEstimation(0.01, 0.3f, sensorCalibration);
+StateEstimation stateEstimation = StateEstimation(0.01, 0.3f, 0.1f,sensorCalibration);
 // the Controller computes thrust forces at every time step. The controller
 // takes a constant reference to the calibration and to the state estimation to
 // have access to corrected measurement and the whole estimated state

@@ -42,7 +42,7 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
   // if the calibration is still running we have to return early
   if (!sensorCalibration.run(in)) {
     // only do things if the calibration is finished.
-    stateEstimation.update(in, Constants::UAV::dt);
+    stateEstimation.update(in, Constants::UAV::dt, logger);
   }
 
   // compute the 4 motor torques from the control policy
@@ -53,13 +53,7 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
   setMotorCommand(MotorID(2), pwmFromForce(c2), out);
   setMotorCommand(MotorID(3), pwmFromForce(c3), out);
   setMotorCommand(MotorID(4), pwmFromForce(c4), out);
-  //MAKE SURE WE ADD THEM HERE**********
-  //send the roll, pitch, and yaw estimates to telemetry
-  outVals.telemetryOutputs_plusMinus100[0] = estRoll;
-  outVals.telemetryOutputs_plusMinus100[1] = estPitch;
-  outVals.telemetryOutputs_plusMinus100[2] = estYaw;
-  
-  
+
   // copy the inputs and outputs for printing
   lastChannelInfo = logger.getChannelInfo();
   lastMainLoopInputs = in;

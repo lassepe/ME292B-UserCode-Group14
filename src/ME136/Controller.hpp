@@ -68,11 +68,6 @@ class Controller {
     cmdAngVel.z =
         -(eulerEst.z - desAng.z) / Constants::Control::timeConstant_yawAngle;
 
-    // log the data for plotting
-    logger.log(desAng.y, "desAng.y");
-    logger.log(cmdAngVel, "desAngVel");
-    logger.log(eulerEst, "eulerEst");
-
     // call the inner control loop and return its values
     return controlAngularVelocity(in, cmdAngVel, logger);
   }
@@ -84,7 +79,7 @@ class Controller {
    * @param desAngVel the desired angular velocity that we want to achieve
    */
   Vec3f controlAngularVelocity(const MainLoopInput& in, const Vec3f& desAngVel,
-                               TelemetryLoggingInterface& logger) {
+                               TelemetryLoggingInterface& /*logger*/) {
     // extract the corrected measurements needed for control
     const auto gyroCalibrated =
         in.imuMeasurement.rateGyro - sensorCalibration_.getRateGyroOffset();
@@ -102,10 +97,6 @@ class Controller {
     float n1 = cmdAngAcc.x * Constants::UAV::inertia_xx;
     float n2 = cmdAngAcc.y * Constants::UAV::inertia_yy;
     float n3 = cmdAngAcc.z * Constants::UAV::inertia_zz;
-
-    // log the data for plotting
-    logger.log(gyroCalibrated.y, "gyroCalibrated.y");
-    logger.log(cmdAngAcc, "cmdAngAcc");
 
     return Vec3f(n1, n2, n3);
   }

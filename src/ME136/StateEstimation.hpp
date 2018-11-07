@@ -2,6 +2,7 @@
 
 #include "MainLoopTypes.hpp"
 #include "SensorCalibration.hpp"
+#include "TelemetryLoggingInterface.hpp"
 #include "UAVConstants.hpp"
 #include "Vec3f.hpp"
 
@@ -39,13 +40,16 @@ class StateEstimation {
    * @param in the intput that contains all the measurements
    * @param dt the temporal difference to the last update
    */
-  void update(const MainLoopInput& in, const float dt) {
+  void update(const MainLoopInput& in, const float dt, TelemetryLoggingInterface& logger) {
     // calculate the corrected rate gyro value
     const auto rateGyroMeasCorrected =
         in.imuMeasurement.rateGyro - sensorCalibration_.getRateGyroOffset();
     // update the attitude estimator
     updateAttitudeEst(rateGyroMeasCorrected, in.imuMeasurement.accelerometer,
                       dt);
+
+    // log all the relevant estimates
+    logger.log(attitudeEst_, "attitudeEst_");
   }
 
  private:

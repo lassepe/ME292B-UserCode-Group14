@@ -14,17 +14,17 @@ namespace Constants {
 
   namespace Control {
     //Gyro rates
-    const float timeConstant_rollRate = 0.02f;
+    const float timeConstant_rollRate = 0.03f;
     const float timeConstant_pitchRate = timeConstant_rollRate;
     const float timeConstant_yawRate = 0.1f;
     //Angles
-    const float timeConstant_rollAngle = 0.12f;
+    const float timeConstant_rollAngle = 0.10f;
     const float timeConstant_pitchAngle = timeConstant_rollAngle;
     const float timeConstant_yawAngle = 0.2f;
     // horizontal velocity
     const float timeConstant_horizVel = 2.0f;
     // verticl control
-    const float natFreq_height = 2.f;
+    const float natFreq_height = 3.f;
     const float dampRat_height = 0.7f;
   };
 

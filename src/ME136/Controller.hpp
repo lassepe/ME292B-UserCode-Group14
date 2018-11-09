@@ -36,16 +36,19 @@ class Controller {
     const auto attitudeEst = stateEstimation_.getAttitudeEst();
     const auto poseEst = stateEstimation_.getPoseEst();
     // defining the set point
-    const float desHeight = 0.5f;
+    const float desHeight = 0.75f;
     // naming some constants for shorter code
     const float wn = Constants::Control::natFreq_height;
     const float d = Constants::Control::dampRat_height;
 
     Vec3f desVel = {0, 0, 0};
-    const float positionTimeConstant = 2.f;
+    const float positionTimeConstant = 7.f;
+    // TODO: think about this coordinate transformation
     Vec3f relativePoseError = {poseEst.x*cosf(poseEst.z) + poseEst.y*sinf(poseEst.z),
                                poseEst.y*cosf(poseEst.z) - poseEst.x*sinf(poseEst.z),
                                poseEst.z};
+    // TODO: Surprised that flipping the sign here didn't do much harm
+    // Maybe log the desired velocity
     desVel = -1 / positionTimeConstant * (relativePoseError);
 
     Vec3f desAcc = {0, 0, 0};

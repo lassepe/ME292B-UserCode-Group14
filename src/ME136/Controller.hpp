@@ -42,14 +42,14 @@ class Controller {
     const float d = Constants::Control::dampRat_height;
 
     Vec3f desVel = {0, 0, 0};
-    const float positionTimeConstant = 7.f;
+    const float positionTimeConstant = 2.f;
     // TODO: think about this coordinate transformation
     Vec3f relativePoseError = {poseEst.x*cosf(poseEst.z) + poseEst.y*sinf(poseEst.z),
                                poseEst.y*cosf(poseEst.z) - poseEst.x*sinf(poseEst.z),
                                poseEst.z};
     // TODO: Surprised that flipping the sign here didn't do much harm
     // Maybe log the desired velocity
-    desVel = -1 / positionTimeConstant * (relativePoseError);
+    desVel = -1 / positionTimeConstant * (poseEst);
 
     Vec3f desAcc = {0, 0, 0};
     desAcc.x = -1 / Constants::Control::timeConstant_horizVel * (velocityEst.x  - desVel.x);
@@ -76,8 +76,8 @@ class Controller {
     // send all the relevant telemetry data
     //logger.log(desAng.x, "desAng.x");
     //logger.log(desAng.y, "desAng.y");
-    logger.log(in.opticalFlowSensor.value_x, "sigma1");
-    logger.log(in.opticalFlowSensor.value_y, "sigma2");
+    logger.log(desVel.x, "desVel_x");
+    logger.log(desVel.y, "desVel_y");
     logger.log(poseEst, "poseEst");
 
     // combine the commanded total thrust and desired motor torques and mix

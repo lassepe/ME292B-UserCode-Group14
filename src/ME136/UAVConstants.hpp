@@ -28,7 +28,7 @@ namespace Constants {
     const float timeConstant_pitchAngle = timeConstant_rollAngle;
     const float timeConstant_yawAngle = 0.2f;
     // horizontal velocity
-    const float timeConstant_horizVel = 2.0f;
+    const float timeConstant_horizVel = 0.7f;
     // verticl control
     const float natFreq_height = 3.f;
     const float dampRat_height = 0.7f;

@@ -40,6 +40,12 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
     stateEstimation.reset();
     controller.reset();
   }
+  if (!in.joystickInput.buttonRed)
+  {
+    // reset all the internal controller states (integrators) at the beginning
+    // of a session
+    controller.reset();
+  }
   // if the calibration is still running we have to return early
   if (!sensorCalibration.run(in)) {
     // only do things if the calibration is finished.

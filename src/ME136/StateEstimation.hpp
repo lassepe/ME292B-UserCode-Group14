@@ -33,7 +33,7 @@ class StateEstimation {
     velocityEst_ = Vec3f(0, 0, 0);
     lastHeightMeas_ = 0.f;
     lastHeightMeasTime_ = 0.f;
-    poseEst_ = {0, 0, 0};
+    positionEstimate_ = {0, 0, 0};
   }
   /**
    * @brief getAttitudeEst a getter for the estimated attitude (this is only
@@ -43,15 +43,10 @@ class StateEstimation {
    */
   const Vec3f& getAttitudeEst() const { return attitudeEst_; }
 
-  /**
-   * @brief getVelocityEst a getter for the estimated velocity
-   * @return the current estimate for the velocity
-   */
+  /// getters for all internal estimates
   const Vec3f& getVelocityEst() const { return velocityEst_; }
-
   float getHeightEst() const { return heightEst_; }
-
-  const Vec3f& getPoseEst() const { return poseEst_; }
+  const Vec3f& getPositionEst() const { return positionEstimate_; }
 
   /**
    * @brief updates the estimator with the current measurements
@@ -100,7 +95,7 @@ class StateEstimation {
   float lastHeightMeas_ = 0.f;
   float lastHeightMeasTime_ = 0.f;
   /// the estimated pose
-  Vec3f poseEst_ = {0, 0, 0};
+  Vec3f positionEstimate_ = {0, 0, 0};
 
   /// a reference to the rate gyro offset (for sensorCalibration)
   const SensorCalibration& sensorCalibration_;
@@ -182,12 +177,12 @@ class StateEstimation {
   }
 
   void updatePositionEstimation() {
-    poseEst_.x += (cosf(attitudeEst_.z) * velocityEst_.x -
+    positionEstimate_.x += (cosf(attitudeEst_.z) * velocityEst_.x -
                    sinf(attitudeEst_.z) * velocityEst_.y) *
                   Constants::UAV::dt;
-    poseEst_.y += (cosf(attitudeEst_.z) * velocityEst_.y +
+    positionEstimate_.y += (cosf(attitudeEst_.z) * velocityEst_.y +
                    sinf(attitudeEst_.z) * velocityEst_.x) *
                   Constants::UAV::dt;
-    poseEst_.z = attitudeEst_.z;
+    positionEstimate_.z = heightEst_;
   }
 };

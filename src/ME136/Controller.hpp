@@ -24,7 +24,7 @@ class Controller {
   /**
    * @brief reset all states of the controller (e.g. integrator gains)
    */
-  void reset() { integratedAttitudeError_ = {0, 0, 0}; }
+  void reset() { integratedPositionError_ = {0, 0, 0}; }
 
   /**
    * @breief control perform the next step of the control task and call all
@@ -41,7 +41,8 @@ class Controller {
     const Vec3f desiredPosition = {0, 0, 0.75f};
     Vec3f desAng = {0, 0, 0};
     float desiredThrust = 0;
-    std::tie(desAng, desiredThrust) = controlTranslation(desiredPosition, logger);
+    std::tie(desAng, desiredThrust) =
+        controlTranslation(desiredPosition, logger);
     // controll the quad to a desired equilibrium attitude
     const Vec3f attitudeMotorTorques = controlAttitude(in, desAng, logger);
 
@@ -52,34 +53,42 @@ class Controller {
 
   /**
    * @brief controlTranslation controlls the translation of the quad and
-   * resturns the desired acceleration in all three directions
+   * resturns the desired angle and total thrust
    *
-   * @return a vector of the acceleration in all three directions
+   * @return a tuple of the disired angle and the total thrust
    */
-  std::tuple<Vec3f, float> controlTranslation(const Vec3f& desiredPosition, TelemetryLoggingInterface& logger)
-  {
+  std::tuple<Vec3f, float> controlTranslation(
+      const Vec3f& desiredPosition, TelemetryLoggingInterface& logger) {
     // extracting the state estimate
     const auto attitudeEst = stateEstimation_.getAttitudeEst();
-    const auto poseEst = stateEstimation_.getPoseEst();
+    const auto positionEst = stateEstimation_.getPositionEst();
     const auto velocityEst = stateEstimation_.getVelocityEst();
-    const auto heightEst = stateEstimation_.getHeightEst();
 
     // naming some constants for shorter code
     const float wn = Constants::Control::natFreq_height;
     const float d = Constants::Control::dampRat_height;
 
     Vec3f desVel = {0, 0, 0};
-    const float positionTimeConstant = 2.f;
+    const Vec3f positionError = (positionEst - desiredPosition);
+
+    const float posIntGain = 0.001f;
+    const float integratorMax = 1.f;
+    const float integratorMin = -1.f;
+    integratedPositionError_ += posIntGain * positionError;
+    // limiting the integrator
+    integratedPositionError_.x = std::min(std::max(integratedPositionError_.x, integratorMin), integratorMax);
+    integratedPositionError_.y = std::min(std::max(integratedPositionError_.y, integratorMin), integratorMax);
+    integratedPositionError_.z = std::min(std::max(integratedPositionError_.z, integratorMin), integratorMax);
+
     // Maybe log the desired velocity
-    desVel = -1 / positionTimeConstant * (poseEst - desiredPosition);
+    desVel = -1 / Constants::Control::timeConstant_position * positionError - integratedPositionError_;
 
     Vec3f desAcc = {0, 0, 0};
     desAcc.x = -1 / Constants::Control::timeConstant_horizVel *
                (velocityEst.x - desVel.x);
     desAcc.y = -1 / Constants::Control::timeConstant_horizVel *
                (velocityEst.y - desVel.y);
-    desAcc.z =
-        -2.f * d * wn * velocityEst.z - wn * wn * (heightEst - desiredPosition.z);
+    desAcc.z = -2.f * d * wn * velocityEst.z - wn * wn * positionError.z;
 
     // for now we want to keep the angle of the quad always at 0
     Vec3f desAng = {0, 0, 0};
@@ -101,7 +110,7 @@ class Controller {
     // logger.log(desAng.y, "desAng.y");
     logger.log(desVel.x, "desVel_x");
     logger.log(desVel.y, "desVel_y");
-    logger.log(poseEst, "poseEst");
+    logger.log(positionEst, "positionEst");
 
     return std::tuple<Vec3f, float>(desAng, desiredThrust);
   }
@@ -167,5 +176,5 @@ class Controller {
   const StateEstimation& stateEstimation_;
 
   /// integrator state for the attitude controller
-  Vec3f integratedAttitudeError_ = {0.f, 0.f, 0.f};
+  Vec3f integratedPositionError_ = {0.f, 0.f, 0.f};
 };

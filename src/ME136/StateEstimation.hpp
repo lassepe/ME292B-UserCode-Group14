@@ -21,13 +21,10 @@ class StateEstimation {
    * @param rhoAttitude the filter parameter for the attitude filter
    * @param a reference to the sensorCalibration module
    */
-  StateEstimation(const float rhoAttitude, const float rhoVertical,
-                  const float rhoHorizontalVel,
-                  const SensorCalibration& sensorCalibration)
-      : attitudeEst_(0, 0, 0),
-        rhoAttitude_(rhoAttitude),
-        rhoVertical_(rhoVertical),
-        rhoHorizontalVel_(rhoHorizontalVel),
+  StateEstimation(const SensorCalibration& sensorCalibration)
+      : rhoAttitude_(Constants::StateEstimation::rhoAttitude),
+        rhoVertical_(Constants::StateEstimation::rhoVertical),
+        rhoHorizontalVel_(Constants::StateEstimation::rhoHorizontalVel),
         sensorCalibration_(sensorCalibration) {}
 
   void reset() {

@@ -12,6 +12,12 @@ namespace Constants {
     const float dt = 1.0f / 500.0f; //[s] period between successive calls to MainLoop
   };
 
+  namespace StateEstimation {
+    const float rhoAttitude = 0.01f;
+    const float rhoHorizontalVel = 0.1f;
+    const float rhoVertical = 0.3f;
+  };
+
   namespace Control {
     //Gyro rates
     const float timeConstant_rollRate = 0.04f;

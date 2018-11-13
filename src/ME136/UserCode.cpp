@@ -38,6 +38,7 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
     // estimation
     sensorCalibration.reset();
     stateEstimation.reset();
+    controller.reset();
   }
   // if the calibration is still running we have to return early
   if (!sensorCalibration.run(in)) {

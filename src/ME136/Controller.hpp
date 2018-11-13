@@ -22,6 +22,11 @@ class Controller {
         stateEstimation_(stateEstimation) {}
 
   /**
+   * @brief reset all states of the controller (e.g. integrator gains)
+   */
+  void reset() { integratedAttitudeError_ = {0, 0, 0}; }
+
+  /**
    * @breief control perform the next step of the control task and call all
    * subroutine in the correct order.
    * @param in the inputs (measurements)
@@ -30,41 +35,59 @@ class Controller {
    */
   std::tuple<float, float, float, float> control(
       const MainLoopInput& in, TelemetryLoggingInterface& logger) {
+    // defining the set point
+
+    // the set point for the position
+    const Vec3f desiredPosition = {0, 0, 0.75f};
+    Vec3f desAng = {0, 0, 0};
+    float desiredThrust = 0;
+    std::tie(desAng, desiredThrust) = controlTranslation(desiredPosition, logger);
+    // controll the quad to a desired equilibrium attitude
+    const Vec3f attitudeMotorTorques = controlAttitude(in, desAng, logger);
+
+    // combine the commanded total thrust and desired motor torques and mix
+    // them to the resulting thrusts per motor
+    return mixToMotorForces(desiredThrust, attitudeMotorTorques);
+  }
+
+  /**
+   * @brief controlTranslation controlls the translation of the quad and
+   * resturns the desired acceleration in all three directions
+   *
+   * @return a vector of the acceleration in all three directions
+   */
+  std::tuple<Vec3f, float> controlTranslation(const Vec3f& desiredPosition, TelemetryLoggingInterface& logger)
+  {
     // extracting the state estimate
-    const auto velocityEst = stateEstimation_.getVelocityEst();
-    const auto heightEst = stateEstimation_.getHeightEst();
     const auto attitudeEst = stateEstimation_.getAttitudeEst();
     const auto poseEst = stateEstimation_.getPoseEst();
-    // defining the set point
-    const float desHeight = 0.75f;
+    const auto velocityEst = stateEstimation_.getVelocityEst();
+    const auto heightEst = stateEstimation_.getHeightEst();
+
     // naming some constants for shorter code
     const float wn = Constants::Control::natFreq_height;
     const float d = Constants::Control::dampRat_height;
 
     Vec3f desVel = {0, 0, 0};
     const float positionTimeConstant = 2.f;
-    // TODO: think about this coordinate transformation
-    Vec3f relativePoseError = {poseEst.x*cosf(poseEst.z) + poseEst.y*sinf(poseEst.z),
-                               poseEst.y*cosf(poseEst.z) - poseEst.x*sinf(poseEst.z),
-                               poseEst.z};
-    // TODO: Surprised that flipping the sign here didn't do much harm
     // Maybe log the desired velocity
-    desVel = -1 / positionTimeConstant * (poseEst);
+    desVel = -1 / positionTimeConstant * (poseEst - desiredPosition);
 
     Vec3f desAcc = {0, 0, 0};
-    desAcc.x = -1 / Constants::Control::timeConstant_horizVel * (velocityEst.x  - desVel.x);
-    desAcc.y = -1 / Constants::Control::timeConstant_horizVel * (velocityEst.y - desVel.y);
+    desAcc.x = -1 / Constants::Control::timeConstant_horizVel *
+               (velocityEst.x - desVel.x);
+    desAcc.y = -1 / Constants::Control::timeConstant_horizVel *
+               (velocityEst.y - desVel.y);
     desAcc.z =
-        -2.f * d * wn * velocityEst.z - wn * wn * (heightEst - desHeight);
+        -2.f * d * wn * velocityEst.z - wn * wn * (heightEst - desiredPosition.z);
+
     // for now we want to keep the angle of the quad always at 0
     Vec3f desAng = {0, 0, 0};
     desAng.x = -desAcc.y / Constants::World::gravity;
     desAng.y = desAcc.x / Constants::World::gravity;
     desAng.z = 0.f;
 
-    // controll the quad to a desired equilibrium attitude
-    const Vec3f attitudeMotorTorques = controlAttitude(in, desAng, logger);
-
+    // The low level controller
     // for now there is no deticated total thrust control but rather we only
     // set a constant value needed to nearly hover the quad
     const float denom = cosf(attitudeEst.x) * cosf(attitudeEst.y);
@@ -74,15 +97,13 @@ class Controller {
     const float desiredThrust = cmdNormThrust * Constants::UAV::mass;
 
     // send all the relevant telemetry data
-    //logger.log(desAng.x, "desAng.x");
-    //logger.log(desAng.y, "desAng.y");
+    // logger.log(desAng.x, "desAng.x");
+    // logger.log(desAng.y, "desAng.y");
     logger.log(desVel.x, "desVel_x");
     logger.log(desVel.y, "desVel_y");
     logger.log(poseEst, "poseEst");
 
-    // combine the commanded total thrust and desired motor torques and mix
-    // them to the resulting thrusts per motor
-    return mixToMotorForces(desiredThrust, attitudeMotorTorques);
+    return std::tuple<Vec3f, float>(desAng, desiredThrust);
   }
 
   /**
@@ -123,7 +144,6 @@ class Controller {
     const auto gyroCalibrated =
         in.imuMeasurement.rateGyro - sensorCalibration_.getRateGyroOffset();
 
-
     Vec3f cmdAngAcc;
 
     cmdAngAcc.x = -(gyroCalibrated.x - desAngVel.x) /
@@ -145,4 +165,7 @@ class Controller {
   const SensorCalibration& sensorCalibration_;
   /// a reference to the estimated states
   const StateEstimation& stateEstimation_;
+
+  /// integrator state for the attitude controller
+  Vec3f integratedAttitudeError_ = {0.f, 0.f, 0.f};
 };

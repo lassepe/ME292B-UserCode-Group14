@@ -33,14 +33,14 @@ MainLoopOutput MainLoop(MainLoopInput const& in) {
   // a logger to conveniently add telemtry logs to out
   auto logger = TelemetryLoggingInterface(12, out);
 
-  if (in.joystickInput.buttonStart) {
+  if (in.joystickInput.buttonStart || in.joystickInput.buttonYellow) {
     // if someone hit the start button we reset the calibration and the state
     // estimation
     sensorCalibration.reset();
     stateEstimation.reset();
     controller.reset();
   }
-  if (!in.joystickInput.buttonRed)
+  if (!in.joystickInput.buttonRed || in.joystickInput.buttonYellow)
   {
     // reset all the internal controller states (integrators) at the beginning
     // of a session

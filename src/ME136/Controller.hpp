@@ -38,7 +38,8 @@ class Controller {
     // defining the set point
 
     // the set point for the position
-    const Vec3f desiredPosition = {0, 0, 0.65f};
+    float desiredHeight = in.joystickInput.buttonGreen ? 0.f : 0.65f;
+    const Vec3f desiredPosition = {0, 0, desiredHeight};
     Vec3f desAng = {0, 0, 0};
     float desiredThrust = 0;
     std::tie(desAng, desiredThrust) =

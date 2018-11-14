@@ -38,7 +38,7 @@ class Controller {
     // defining the set point
 
     // the set point for the position
-    const Vec3f desiredPosition = {0, 0, 0.75f};
+    const Vec3f desiredPosition = {0, 0, 0.65f};
     Vec3f desAng = {0, 0, 0};
     float desiredThrust = 0;
     std::tie(desAng, desiredThrust) =
@@ -71,10 +71,10 @@ class Controller {
     Vec3f desVel = {0, 0, 0};
     const Vec3f positionError = (positionEst - desiredPosition);
 
-    const float posIntGain = 0.001f;
+    const float positionAccumulationGain = 0.001f;
     const float integratorMax = 1.f;
     const float integratorMin = -1.f;
-    integratedPositionError_ += posIntGain * positionError;
+    integratedPositionError_ += positionAccumulationGain * positionError;
     // limiting the integrator
     integratedPositionError_.x = std::min(std::max(integratedPositionError_.x, integratorMin), integratorMax);
     integratedPositionError_.y = std::min(std::max(integratedPositionError_.y, integratorMin), integratorMax);
@@ -84,10 +84,13 @@ class Controller {
     desVel = -1 / Constants::Control::timeConstant_position * positionError - integratedPositionError_;
 
     Vec3f desAcc = {0, 0, 0};
-    desAcc.x = -1 / Constants::Control::timeConstant_horizVel *
-               (velocityEst.x - desVel.x);
-    desAcc.y = -1 / Constants::Control::timeConstant_horizVel *
-               (velocityEst.y - desVel.y);
+
+    const float pPos = .7f;
+    const float iPos = 2.f;
+    const float dPos = 3.f;
+
+    desAcc.x = -pPos * positionError.x - iPos * integratedPositionError_.x - dPos * velocityEst.x;
+    desAcc.y = -pPos * positionError.y - iPos * integratedPositionError_.y - dPos * velocityEst.y;
     desAcc.z = -2.f * d * wn * velocityEst.z - wn * wn * positionError.z;
 
     // for now we want to keep the angle of the quad always at 0

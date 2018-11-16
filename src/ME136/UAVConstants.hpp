@@ -30,10 +30,10 @@ namespace Constants {
     // position control
     const float timeConstant_position = 2.f;
     // horizontal velocity
-    const float timeConstant_horizVel = 0.5f;
+    const float timeConstant_horizVel = 0.6f;
     // verticl control
     const float natFreq_height = 3.f;
-    const float dampRat_height = 0.7f;
+    const float dampRat_height = 1.f;
   };
 
   namespace World {

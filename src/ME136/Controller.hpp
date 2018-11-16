@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <functional>
 #include <tuple>
 
 #include "MainLoopTypes.hpp"
@@ -9,6 +10,7 @@
 #include "TelemetryLoggingInterface.hpp"
 #include "UAVConstants.hpp"
 #include "UtilityFunctions.hpp"
+#include "Vec3f.hpp"
 
 class Controller {
  public:
@@ -24,7 +26,12 @@ class Controller {
   /**
    * @brief reset all states of the controller (e.g. integrator gains)
    */
-  void reset() { integratedPositionError_ = {0, 0, 0}; }
+  void reset() {
+    integratedPositionError_ = {0, 0, 0};
+    landingStartHeight_ = 0.f;
+    landingProgress_ = 0.f;
+    flightSetPosition_ = {0.f, 0.f, 0.75f};
+  }
 
   /**
    * @breief control perform the next step of the control task and call all
@@ -35,11 +42,11 @@ class Controller {
    */
   std::tuple<float, float, float, float> control(
       const MainLoopInput& in, TelemetryLoggingInterface& logger) {
-    // defining the set point
+    // update the set position based on the user input
+    updateFlightSetPosition(in);
 
-    // the set point for the position
-    float desiredHeight = in.joystickInput.buttonGreen ? 0.f : 0.65f;
-    const Vec3f desiredPosition = {0, 0, desiredHeight};
+    // the reference position that we seek to track
+    const Vec3f desiredPosition = getDesiredPosition(in);
     Vec3f desAng = {0, 0, 0};
     float desiredThrust = 0;
     std::tie(desAng, desiredThrust) =
@@ -52,6 +59,7 @@ class Controller {
     return mixToMotorForces(desiredThrust, attitudeMotorTorques);
   }
 
+ private:
   /**
    * @brief controlTranslation controlls the translation of the quad and
    * resturns the desired angle and total thrust
@@ -77,21 +85,27 @@ class Controller {
     const float integratorMin = -1.f;
     integratedPositionError_ += positionAccumulationGain * positionError;
     // limiting the integrator
-    integratedPositionError_.x = std::min(std::max(integratedPositionError_.x, integratorMin), integratorMax);
-    integratedPositionError_.y = std::min(std::max(integratedPositionError_.y, integratorMin), integratorMax);
-    integratedPositionError_.z = std::min(std::max(integratedPositionError_.z, integratorMin), integratorMax);
+    integratedPositionError_.x = std::min(
+        std::max(integratedPositionError_.x, integratorMin), integratorMax);
+    integratedPositionError_.y = std::min(
+        std::max(integratedPositionError_.y, integratorMin), integratorMax);
+    integratedPositionError_.z = std::min(
+        std::max(integratedPositionError_.z, integratorMin), integratorMax);
 
     // Maybe log the desired velocity
-    desVel = -1 / Constants::Control::timeConstant_position * positionError - integratedPositionError_;
+    desVel = -1 / Constants::Control::timeConstant_position * positionError -
+             integratedPositionError_;
 
     Vec3f desAcc = {0, 0, 0};
 
-    const float pPos = .7f;
+    const float pPos = 1.5f;
     const float iPos = 2.f;
     const float dPos = 3.f;
 
-    desAcc.x = -pPos * positionError.x - iPos * integratedPositionError_.x - dPos * velocityEst.x;
-    desAcc.y = -pPos * positionError.y - iPos * integratedPositionError_.y - dPos * velocityEst.y;
+    desAcc.x = -pPos * positionError.x - iPos * integratedPositionError_.x -
+               dPos * velocityEst.x;
+    desAcc.y = -pPos * positionError.y - iPos * integratedPositionError_.y -
+               dPos * velocityEst.y;
     desAcc.z = -2.f * d * wn * velocityEst.z - wn * wn * positionError.z;
 
     // for now we want to keep the angle of the quad always at 0
@@ -114,7 +128,7 @@ class Controller {
     // logger.log(desAng.y, "desAng.y");
     logger.log(desVel.x, "desVel_x");
     logger.log(desVel.y, "desVel_y");
-    logger.log(positionEst, "positionEst");
+    logger.log(flightSetPosition_, "flightSetPosition_");
 
     return std::tuple<Vec3f, float>(desAng, desiredThrust);
   }
@@ -173,7 +187,72 @@ class Controller {
     return Vec3f(n1, n2, n3);
   }
 
- private:
+  /**
+   * @brief getDesiredPosition computes the desired position, reference to the
+   * controller
+   * @param in a reference to the main loop inputs to access the button inputs
+   */
+  Vec3f getDesiredPosition(const MainLoopInput& in) {
+    // the height which we stop and drop
+    const float dropOffHeight = 0.3f;
+    // a linear landing trajectory
+
+    auto decceleratingLandingTrajectory = [&](const float p) -> Vec3f {
+      if (p < Constants::UAV::dt / landingDuration_) {
+        // if we just started the landing then we store the current height
+        landingStartHeight_ = stateEstimation_.getHeightEst();
+      }
+      return Vec3f(0.f, 0.f, 1.f) *
+             ((1.f - sqrtf(landingProgress_)) * landingStartHeight_ +
+              sqrtf(landingProgress_) * dropOffHeight);
+    };
+
+    Vec3f desiredPosition = {0.f, 0.f, -1.f};
+    // if the green button was pressed then we want to land
+    if (in.joystickInput.buttonYellow) {
+      // we are currently calibrating. Reset the landing progress and update
+      // and return a safe position.
+      landingProgress_ = 0.f;
+      desiredPosition = {0.f, 0.f, 0.f};
+    } else if (in.joystickInput.buttonGreen) {
+      // we want to perform the landing maneuver
+      if (landingProgress_ > 1.f) {
+        // we reached the en of the landing maneuver. This is a rather ugly way
+        // to turn off the motors
+        desiredPosition = {0.f, 0.f, -1.f};
+      } else {
+        // increment the landing counter
+        desiredPosition = decceleratingLandingTrajectory(landingProgress_);
+        landingProgress_ += Constants::UAV::dt / landingDuration_;
+      }
+    } else if (landingProgress_ < Constants::UAV::dt / landingDuration_) {
+      // we are currently in full flight and want to achief flight height
+      desiredPosition = flightSetPosition_;
+    }
+
+    return desiredPosition;
+  }
+
+  void updateFlightSetPosition(const MainLoopInput& in) {
+    // a vector transforming the user inputs to the calibrated fixed frame
+    // (where the quad launched). Left joystick controlls horizontal position.
+    // Right joystick controlls vertical position.
+    Vec3f userHorizontalInput = {in.joystickInput.axisLeftHorizontal,
+                                 -in.joystickInput.axisLeftVertical, 0};
+    Vec3f userVerticalInput = {0.f, 0.f, in.joystickInput.axisRightHorizontal};
+
+    // check if a change in horizontal position was requested:
+    const float maxHorizontalUserVel = 0.2f;
+    const float maxVerticalUserVel = 0.4f;
+    if (userHorizontalInput.GetNorm2() > 0.2f) {
+      // TODO: maybe move somewhere else
+      flightSetPosition_ += Constants::UAV::dt * maxHorizontalUserVel * userHorizontalInput;
+    }
+    if (userVerticalInput.GetNorm2() > 0.2f) {
+      flightSetPosition_ += Constants::UAV::dt * maxVerticalUserVel * userVerticalInput;
+    }
+  }
+
   /// a reference to the calibration results
   const SensorCalibration& sensorCalibration_;
   /// a reference to the estimated states
@@ -181,4 +260,15 @@ class Controller {
 
   /// integrator state for the attitude controller
   Vec3f integratedPositionError_ = {0.f, 0.f, 0.f};
+
+  /// an internal counter for a smoother landing
+  float landingProgress_ = 0.f;
+  /// TODO: this could be commanded from outside
+  /// the duration of the landing maneuver
+  const float landingDuration_ = 1.f;
+  /// a state to store the height of the quad at the beginning of the landing
+  /// maneuver
+  float landingStartHeight_ = 0.f;
+
+  Vec3f flightSetPosition_ = {0.f, 0.f, 0.75f};
 };

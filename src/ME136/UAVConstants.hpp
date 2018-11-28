@@ -27,10 +27,10 @@ namespace Constants {
     const float timeConstant_rollAngle = 0.12f;
     const float timeConstant_pitchAngle = timeConstant_rollAngle;
     const float timeConstant_yawAngle = 0.2f;
-    // position control
-    const float timeConstant_position = 2.f;
-    // horizontal velocity
-    const float timeConstant_horizVel = 0.6f;
+    // PID poisition controller
+    const float pPos = 1.5f;
+    const float iPos = 2.f;
+    const float dPos = 3.f;
     // verticl control
     const float natFreq_height = 3.f;
     const float dampRat_height = 1.f;

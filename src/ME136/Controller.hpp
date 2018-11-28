@@ -77,7 +77,6 @@ class Controller {
     const float wn = Constants::Control::natFreq_height;
     const float d = Constants::Control::dampRat_height;
 
-    Vec3f desVel = {0, 0, 0};
     const Vec3f positionError = (positionEst - desiredPosition);
 
     const float positionAccumulationGain = 0.001f;
@@ -92,20 +91,14 @@ class Controller {
     integratedPositionError_.z = std::min(
         std::max(integratedPositionError_.z, integratorMin), integratorMax);
 
-    // Maybe log the desired velocity
-    desVel = -1 / Constants::Control::timeConstant_position * positionError -
-             integratedPositionError_;
-
     Vec3f desAcc = {0, 0, 0};
 
-    const float pPos = 1.5f;
-    const float iPos = 2.f;
-    const float dPos = 3.f;
-
-    desAcc.x = -pPos * positionError.x - iPos * integratedPositionError_.x -
-               dPos * velocityEst.x;
-    desAcc.y = -pPos * positionError.y - iPos * integratedPositionError_.y -
-               dPos * velocityEst.y;
+    desAcc.x = -Constants::Control::pPos * positionError.x -
+               Constants::Control::iPos * integratedPositionError_.x -
+               Constants::Control::dPos * velocityEst.x;
+    desAcc.y = -Constants::Control::pPos * positionError.y -
+               Constants::Control::iPos * integratedPositionError_.y -
+               Constants::Control::dPos * velocityEst.y;
     desAcc.z = -2.f * d * wn * velocityEst.z - wn * wn * positionError.z;
 
     // for now we want to keep the angle of the quad always at 0
@@ -124,11 +117,9 @@ class Controller {
     const float desiredThrust = cmdNormThrust * Constants::UAV::mass;
 
     // send all the relevant telemetry data
-    // logger.log(desAng.x, "desAng.x");
-    // logger.log(desAng.y, "desAng.y");
-    logger.log(desVel.x, "desVel_x");
-    logger.log(desVel.y, "desVel_y");
-    logger.log(flightSetPosition_, "flightSetPosition_");
+    logger.log(desAng.x, "desAng.x");
+    logger.log(desAng.y, "desAng.y");
+    logger.log(flightSetPosition_.z, "flightSetPosition_.z");
 
     return std::tuple<Vec3f, float>(desAng, desiredThrust);
   }
@@ -246,10 +237,12 @@ class Controller {
     const float maxVerticalUserVel = 0.4f;
     if (userHorizontalInput.GetNorm2() > 0.2f) {
       // TODO: maybe move somewhere else
-      flightSetPosition_ += Constants::UAV::dt * maxHorizontalUserVel * userHorizontalInput;
+      flightSetPosition_ +=
+          Constants::UAV::dt * maxHorizontalUserVel * userHorizontalInput;
     }
     if (userVerticalInput.GetNorm2() > 0.2f) {
-      flightSetPosition_ += Constants::UAV::dt * maxVerticalUserVel * userVerticalInput;
+      flightSetPosition_ +=
+          Constants::UAV::dt * maxVerticalUserVel * userVerticalInput;
     }
   }
 

@@ -73,7 +73,7 @@ class StateEstimation {
     // log all the relevant estimates
     logger.log(attitudeEst_, "attitudeEst_");
     logger.log(velocityEst_, "velocityEst_");
-    logger.log(heightEst_, "heightEst_");
+    logger.log(positionEstimate_, "positionEstimate_");
   }
 
  private:
@@ -176,13 +176,18 @@ class StateEstimation {
     }
   }
 
+  /**
+   * @brief updatePositionEstimation performs position estimation by integrating
+   * the velocity in the inertial odometry frame using the euler integration
+   * scheme
+   */
   void updatePositionEstimation() {
     positionEstimate_.x += (cosf(attitudeEst_.z) * velocityEst_.x -
-                   sinf(attitudeEst_.z) * velocityEst_.y) *
-                  Constants::UAV::dt;
+                            sinf(attitudeEst_.z) * velocityEst_.y) *
+                           Constants::UAV::dt;
     positionEstimate_.y += (cosf(attitudeEst_.z) * velocityEst_.y +
-                   sinf(attitudeEst_.z) * velocityEst_.x) *
-                  Constants::UAV::dt;
+                            sinf(attitudeEst_.z) * velocityEst_.x) *
+                           Constants::UAV::dt;
     positionEstimate_.z = heightEst_;
   }
 };

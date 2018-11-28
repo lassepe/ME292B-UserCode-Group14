@@ -119,7 +119,7 @@ class Controller {
     // send all the relevant telemetry data
     logger.log(desAng.x, "desAng.x");
     logger.log(desAng.y, "desAng.y");
-    logger.log(flightSetPosition_.z, "flightSetPosition_.z");
+    logger.log(desiredPosition.z, "desiredPosition.z");
 
     return std::tuple<Vec3f, float>(desAng, desiredThrust);
   }
